@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "com.umut.sharedInventory.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins":  [
+		"SharedInventoryMixin",
+		"SharedInventoryPlayerEntityMixin",
+		"SharedInventoryServerPlayerEntityMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
