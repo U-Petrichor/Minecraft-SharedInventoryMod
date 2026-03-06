@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "shared_inventory_mod",
+	"version": "${version}",
+	"name": "SharedInventoryMod",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"Umut_o_O"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/shared_inventory_mod/shared_inventory_mod.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.umut.sharedInventory.SharedInventoryMod"
+		],
+		"client": [
+			"com.umut.sharedInventory.SharedInventoryModClient"
+		],
+		"fabric-datagen": [
+			"com.umut.sharedInventory.SharedInventoryModDataGenerator"
+		]
+	},
+	"mixins": [
+		"shared_inventory_mod.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": "~1.19.1",
+		"java": ">=17",
+		"fabric": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
