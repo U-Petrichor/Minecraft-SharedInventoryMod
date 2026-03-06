@@ -1,0 +1,6 @@
+{
+  "parent": "block/cube_all",
+  "textures": {
+    "all": "shared_inventory_mod:block/shared_inventory_chest_block"
+  }
+}
