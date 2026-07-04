@@ -3,13 +3,16 @@
   "block.shared_inventory_mod.shared_inventory_chest_block": "Shared Core",
   "block_entity.shared_inventory_mod.shared_inventory_chest_block_entity_title": "Change Password",
   "item.shared_inventory_mod.shared_inventory_backpack": "Shared Inventory Backpack",
-  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "Right click to use the backpack",
-  "itemGroup.umut.shared_inventory_mod": "Shared Inventory Mod",
+  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "Right click to equip, press B to open while wearing",
+  "itemGroup.petrichor.shared_inventory_mod": "Shared Inventory Mod",
   "message.shared_inventory_mod.interactHandler": "Successfully linked to shared core!",
   "message.shared_inventory_mod.shared_inventory_backpack.message1": "You can't use this backpack until you link to shared core. Creator suggest you put shared core in overWorld",
   "message.shared_inventory_mod.shared_inventory_backpack.message2": "Key doesn't match the shared core's password. Update your key or link to a new shared core first.",
   "screen.shared_inventory_mod.shared_inventory_screen.private_inventory": "Private",
   "screen.shared_inventory_mod.shared_inventory_screen.button1": "Back",
   "screen.shared_inventory_mod.shared_inventory_screen.button2": "Next",
-  "screen.shared_inventory_mod.shared_inventory_screen.button3": "Go"
+  "screen.shared_inventory_mod.shared_inventory_screen.button3": "Go",
+  "key.shared_inventory_mod.open_backpack": "Open Backpack",
+  "key.categories.shared_inventory_mod": "Shared Inventory Mod",
+  "message.shared_inventory_mod.backpack.not_equipped": "You are not wearing a backpack!"
 }

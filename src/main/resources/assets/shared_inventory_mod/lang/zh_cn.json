@@ -3,13 +3,17 @@
   "block.shared_inventory_mod.shared_inventory_chest_block": "共享核心",
   "block_entity.shared_inventory_mod.shared_inventory_chest_block_entity_title": "修改密钥",
   "item.shared_inventory_mod.shared_inventory_backpack": "共享背包",
-  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "鼠标右键可打开背包",
-  "itemGroup.umut.shared_inventory_mod": "共享存储",
+  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "右键装备到胸甲栏，穿着时按B键打开背包",
+  "itemGroup.petrichor.shared_inventory_mod": "共享存储",
   "message.shared_inventory_mod.interactHandler": "成功链接到共享核心!",
   "message.shared_inventory_mod.shared_inventory_backpack.message1": "你的背包没有绑定共享核心，所以你无法使用右下角4*4的背包，建议绑定一个共享核心后再使用，推荐在主世界出生点安置一个共享核心",
   "message.shared_inventory_mod.shared_inventory_backpack.message2": "你的密钥和共享核心的密码不匹配，请修改密钥或者重新绑定后再使用",
   "screen.shared_inventory_mod.shared_inventory_screen.private_inventory": "私人背包",
+  "screen.shared_inventory_mod.shared_inventory_screen.public_inventory": "共享背包",
   "screen.shared_inventory_mod.shared_inventory_screen.button1": "上",
   "screen.shared_inventory_mod.shared_inventory_screen.button2": "下",
-  "screen.shared_inventory_mod.shared_inventory_screen.button3": "前往"
+  "screen.shared_inventory_mod.shared_inventory_screen.button3": "前往",
+  "key.shared_inventory_mod.open_backpack": "打开背包",
+  "key.categories.shared_inventory_mod": "共享存储",
+  "message.shared_inventory_mod.backpack.not_equipped": "你没有穿着背包!"
 }

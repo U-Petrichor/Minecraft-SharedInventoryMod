@@ -1,4 +1,6 @@
-package com.umut.sharedInventory.objects;
+package com.petrichor.sharedInventory.block;
+
+import com.petrichor.sharedInventory.inventory.ModObjects;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
@@ -15,9 +17,18 @@ import net.minecraft.text.TranslatableText;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 
+/**
+ * 共享核心方块实体 — 持有公共背包数据 (4×4 = 16 格)
+ *
+ * publicStack 是所有绑定此核心的背包共享的存储空间，
+ * 通过 BackpackInventory 包装后传给 ScreenHandler。
+ * 数据通过 NBT 持久化在方块实体中。
+ */
 public class SharedInventoryChestBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
 
+    /** 公共背包槽位数 (4×4) */
     private final int publicStackSize=16;
+    /** 公共物品列表，所有绑定此核心的玩家共享 */
     public final DefaultedList<ItemStack> publicStack = DefaultedList.ofSize(publicStackSize, ItemStack.EMPTY);
 
 
