@@ -3,7 +3,7 @@
   "block.shared_inventory_mod.shared_inventory_chest_block": "共享核心",
   "block_entity.shared_inventory_mod.shared_inventory_chest_block_entity_title": "修改密鑰",
   "item.shared_inventory_mod.shared_inventory_backpack": "共享背包",
-  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "右鍵裝備到胸甲欄，穿著時按B鍵打開背包",
+  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "右鍵裝備到專屬背包欄，穿著時按B鍵打開背包",
   "itemGroup.petrichor.shared_inventory_mod": "共享存儲",
   "message.shared_inventory_mod.interactHandler": "成功鏈接到共享核心!",
   "message.shared_inventory_mod.shared_inventory_backpack.message1": "你的揹包沒有綁定共享核心，這樣會導致無法獲取正確的私人揹包，請綁定一個共享核心後再使用，推薦在主世界出生點安置一個共享核心",
