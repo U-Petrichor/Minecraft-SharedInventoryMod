@@ -1,0 +1,18 @@
+{
+  "block.shared_inventory_mod.shared_inventory_chest.tooltip": "Place in the world and link a backpack to share items with your team",
+  "block.shared_inventory_mod.shared_inventory_chest_block": "Shared Core",
+  "block_entity.shared_inventory_mod.shared_inventory_chest_block_entity_title": "Shared Core",
+  "item.shared_inventory_mod.shared_inventory_backpack": "Shared Inventory Backpack",
+  "item.shared_inventory_mod.shared_inventory_backpack.tooltip": "Right click to equip, press B to open while wearing",
+  "itemGroup.shared_inventory_mod.shared_inventory_mod": "Shared Inventory",
+  "message.shared_inventory_mod.interactHandler": "Successfully linked to shared core!",
+  "message.shared_inventory_mod.shared_inventory_backpack.message1": "You can't use this backpack until you link it to a shared core. It's recommended to place a shared core at your overworld spawn point.",
+"screen.shared_inventory_mod.shared_inventory_screen.private_inventory": "Private",
+  "screen.shared_inventory_mod.shared_inventory_screen.public_inventory": "Shared",
+  "screen.shared_inventory_mod.shared_inventory_screen.button1": "Back",
+  "screen.shared_inventory_mod.shared_inventory_screen.button2": "Next",
+  "screen.shared_inventory_mod.shared_inventory_screen.button3": "Go",
+  "key.shared_inventory_mod.open_backpack": "Open Backpack",
+  "key.categories.shared_inventory_mod": "Shared Inventory",
+  "message.shared_inventory_mod.backpack.not_equipped": "You are not wearing a backpack!"
+}
