@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "jij",
+    "iki",
+    "jjj"
+  ],
+  "key": {
+    "i": {
+      "item": "minecraft:stick"
+    },
+    "j": {
+      "item": "minecraft:leather"
+    },
+    "k": {
+      "item": "minecraft:ender_eye"
+    }
+  },
+  "result": {
+    "id": "shared_inventory_mod:shared_inventory_backpack"
+  }
+}
