@@ -1,3 +1,22 @@
 {
-  "parent": "shared_inventory_mod:block/shared_inventory_chest_block"
+  "parent": "shared_inventory_mod:block/shared_inventory_chest_block",
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.625,
+        0.625,
+        0.625
+      ]
+    }
+  }
 }
