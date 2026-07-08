@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "shared_inventory_mod",
+	"version": "${version}",
+	"name": "Shared Inventory Mod",
+	"description": "A Minecraft mod that provides a shared inventory system with private paged backpacks, public shared chests, and integrated workstations.",
+	"authors": [
+		"Petrichor"
+	],
+	"contact": {
+		"homepage": "https://github.com/C2C867/shared_inventory1.18.2",
+		"sources": "https://github.com/C2C867/shared_inventory1.18.2"
+	},
+	"license": "CC-BY-NC-4.0",
+	"icon": "assets/shared_inventory_mod/shared_inventory_mod.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.petrichor.sharedInventory.SharedInventoryMod"
+		],
+		"client": [
+			"com.petrichor.sharedInventory.SharedInventoryModClient"
+		]
+	},
+	"mixins": [
+		"SharedInventoryMod.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": "~1.20.2",
+		"java": ">=17",
+		"fabric-api": ">=0.91.6"
+	}
+}
