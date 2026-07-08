@@ -2,16 +2,16 @@
 	"schemaVersion": 1,
 	"id": "shared_inventory_mod",
 	"version": "${version}",
-	"name": "SharedInventoryMod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Shared Inventory Mod",
+	"description": "A Minecraft mod that provides a shared inventory system with private paged backpacks, public shared chests, and integrated workstations.",
 	"authors": [
-		"Umut_o_O"
+		"Petrichor"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/C2C867/shared_inventory1.18.2",
+		"sources": "https://github.com/C2C867/shared_inventory1.18.2"
 	},
-	"license": "CC0-1.0",
+	"license": "CC-BY-NC-4.0",
 	"icon": "assets/shared_inventory_mod/shared_inventory_mod.png",
 	"environment": "*",
 	"entrypoints": {
@@ -20,21 +20,15 @@
 		],
 		"client": [
 			"com.umut.sharedInventory.SharedInventoryModClient"
-		],
-		"fabric-datagen": [
-			"com.umut.sharedInventory.SharedInventoryModDataGenerator"
 		]
 	},
 	"mixins": [
-		"shared_inventory_mod.mixins.json"
+		"SharedInventoryMod.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=0.16.10",
 		"minecraft": "~1.19.3",
 		"java": ">=17",
-		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
+		"fabric-api": ">=0.76.1"
 	}
 }

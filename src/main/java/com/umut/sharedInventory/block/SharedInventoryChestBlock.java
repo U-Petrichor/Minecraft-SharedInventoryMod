@@ -1,48 +1,67 @@
-package com.umut.sharedInventory.objects;
+package com.umut.sharedInventory.block;
 
-import net.minecraft.block.BlockRenderType;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.BlockWithEntity;
+import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.screen.NamedScreenHandlerFactory;
+import net.minecraft.state.StateManager;
+import net.minecraft.state.property.DirectionProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * 共享核心方块 — 放置在世界中后作为共享存储的锚点
+ *
+ * 玩家右键方块可打开公共背包界面，背包物品需先与此方块绑定才能使用共享功能。
+ * 方块朝向由放置时玩家面朝方向决定。
+ */
 public class SharedInventoryChestBlock extends BlockWithEntity {
+    public static final DirectionProperty FACING = HorizontalFacingBlock.FACING;
+
     public SharedInventoryChestBlock(Settings settings) {
         super(settings);
+        setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.NORTH));
     }
-    //要在以后给这个箱子弄材质，记得别忘了
+
+    @Override
+    protected void appendProperties(StateManager.Builder<Block, BlockState> builder) {
+        builder.add(FACING);
+    }
+
+    @Override
+    public @Nullable BlockState getPlacementState(ItemPlacementContext ctx) {
+        return getDefaultState().with(FACING, ctx.getPlayerFacing());
+    }
+
     @Override
     public @Nullable BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-        return new SharedInventoryChestBlockEntity(ModObjects.SHARED_INVENTORY_CHEST_BLOCK_ENTITY, pos, state);
+        return new SharedInventoryChestBlockEntity(pos, state);
     }
 
     @Override
     public BlockRenderType getRenderType(BlockState state) {
-        // 从 BlockWithEntity 继承的默认值为 INVISIBLE，所以这里需要进行改变！
         return BlockRenderType.MODEL;
     }
 
     @Override
-    public @Nullable NamedScreenHandlerFactory createScreenHandlerFactory(BlockState state, World world, BlockPos pos) {
-        return super.createScreenHandlerFactory(state, world, pos);
+    @SuppressWarnings("deprecation")
+    public boolean hasSidedTransparency(BlockState state) {
+        return true;
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
         if (!world.isClient) {
-            // 这里会调用 BlockWithEntity 的 createScreenHandlerFactory 方法，会将返回的方块实体强转为
-            // 一个 namedScreenHandlerFactory。如果你的方块没有继承 BlockWithEntity，那就需要单独实现 createScreenHandlerFactory。
             NamedScreenHandlerFactory screenHandlerFactory = state.createScreenHandlerFactory(world, pos);
-
             if (screenHandlerFactory != null) {
-                // 这个调用会让服务器请求客户端开启合适的 ScreenHandler
                 player.openHandledScreen(screenHandlerFactory);
             }
         }
