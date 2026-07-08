@@ -17,10 +17,10 @@ public class SharedInventoryModClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        /** 注册共享存储界面的 Screen 渲染器 */
+        // 注册共享存储界面的 Screen 渲染器
         HandledScreens.register(ModObjects.SHARED_INVENTORY_SCREEN_HANDLER, SharedInventoryScreen::new);
 
-        /** 注册快捷键 (默认按键打开穿戴的背包) */
+        // 注册快捷键 (默认按键打开穿戴的背包)
         BackpackKeybind.register();
     }
 }

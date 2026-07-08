@@ -16,13 +16,25 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.text.TranslatableText;
 import net.minecraft.util.Hand;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
+/**
+ * 共享背包物品 — 核心交互入口
+ *
+ * 交互流程:
+ *   1. 首次右键: 将背包装备到专属槽位 (通过 SharedInventoryPlayerEntity)
+ *   2. 再次右键 (手持已装备的背包): 打开共享存储界面
+ *   3. 绑定: 手持背包右键共享核心方块 → 将方块坐标写入背包 NBT
+ *   4. 快捷键: 按 B 键 → OpenBackpackPacket 处理 → 打开共享存储界面
+ */
 public class SharedInventoryBackpack extends Item implements NamedScreenHandlerFactory {
 
     public SharedInventoryBackpack(Settings settings) {
@@ -36,12 +48,15 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
             if (user instanceof SharedInventoryPlayerEntity sharedPlayer) {
                 ItemStack currentBackpack = sharedPlayer.shared$getBackpackStack();
                 if (currentBackpack.isEmpty()) {
+                    // 首次使用: 装备到专属槽位
                     sharedPlayer.shared$setBackpackStack(stack.copy());
                     stack.setCount(0);
                     return TypedActionResult.success(stack, world.isClient());
                 }
+                // 已装备背包: 打开共享存储界面
+                user.openHandledScreen(this);
             }
-            user.openHandledScreen(this);
+            // Mixin 未生效时不执行任何操作
         }
         return TypedActionResult.pass(user.getStackInHand(hand));
     }
@@ -60,13 +75,14 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
 
     @Override
     public Text getDisplayName() {
-        return Text.of("Shared Inventory");
+        return new TranslatableText("item.shared_inventory_mod.shared_inventory_backpack");
     }
 
     public void linkToChest(ItemStack stack, SharedInventoryChestBlockEntity blockEntity) {
-        if (blockEntity != null) {
+        if (blockEntity != null && blockEntity.getWorld() != null) {
             NbtCompound nbt = stack.getOrCreateNbt();
             nbt.putLong("linkedBlockEntityPos", blockEntity.getPos().asLong());
+            nbt.putString("linkedDimension", blockEntity.getWorld().getRegistryKey().getValue().toString());
         }
     }
 
@@ -75,6 +91,22 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
         NbtCompound nbt = stack.getNbt();
         if (nbt == null || !nbt.contains("linkedBlockEntityPos")) return null;
         BlockPos pos = BlockPos.fromLong(nbt.getLong("linkedBlockEntityPos"));
+
+        // 优先按维度精确查找 (新格式)
+        if (nbt.contains("linkedDimension")) {
+            try {
+                Identifier dimId = new Identifier(nbt.getString("linkedDimension"));
+                RegistryKey<World> dimKey = RegistryKey.of(Registry.WORLD_KEY, dimId);
+                ServerWorld world = server.getWorld(dimKey);
+                if (world != null && world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity be) {
+                    return be;
+                }
+            } catch (net.minecraft.util.InvalidIdentifierException ignored) {
+                // 损坏或过时的 NBT 数据，回退到遍历维度
+            }
+        }
+
+        // 回退: 遍历所有维度 (兼容无维度信息的旧数据)
         for (ServerWorld world : server.getWorlds()) {
             if (world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity be) {
                 return be;

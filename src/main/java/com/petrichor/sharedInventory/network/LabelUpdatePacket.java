@@ -10,7 +10,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
  * action: 0 = 设置标签, 1 = 跳转到标签页
  */
 public class LabelUpdatePacket {
-    /** 操作类型: 0=设置标签, 1=跳转到标签页 */
+    /** 操作类型常量 */
+    private static final int ACTION_SET_LABEL = 0;
+    private static final int ACTION_JUMP_TO_LABEL = 1;
+    /** 页码范围上限 */
+    private static final int MAX_PAGE = 24;
+
     private final int action;
     /** 目标页码 (设置标签时使用) */
     private final int page;
@@ -37,13 +42,16 @@ public class LabelUpdatePacket {
     }
 
     public static void handle(LabelUpdatePacket packet, ServerPlayerEntity player) {
+        if (packet.action < ACTION_SET_LABEL || packet.action > ACTION_JUMP_TO_LABEL) return;
+        if (packet.page < 1 || packet.page > MAX_PAGE) return;
+        if (packet.label == null) return;
         if (player instanceof SharedInventoryPlayerEntity sharedInventoryPlayerEntity) {
             PrivateInventory inv = sharedInventoryPlayerEntity.shared$getPrivateInventory();
             switch (packet.action) {
-                case 0: // 设置标签
+                case ACTION_SET_LABEL:
                     inv.setPageLabel(packet.page, packet.label);
                     break;
-                case 1: // 跳转到标签页
+                case ACTION_JUMP_TO_LABEL:
                     int targetPage = inv.findPageByLabel(packet.label);
                     if (targetPage > 0) {
                         inv.setCurrentPage(targetPage);

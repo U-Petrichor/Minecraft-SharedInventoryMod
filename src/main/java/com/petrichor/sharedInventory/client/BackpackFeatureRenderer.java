@@ -14,6 +14,12 @@ import net.minecraft.client.render.model.json.ModelTransformation;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 
+/**
+ * 背包渲染器 — 在穿着共享背包的玩家背上渲染 3D 物品模型
+ *
+ * 通过 PlayerEntityRendererMixin 注入到玩家渲染流程中。
+ * 避免第一人称视角下渲染（玩家看不到自己的背），缩放至 60% 并偏移至背部位置。
+ */
 public class BackpackFeatureRenderer extends FeatureRenderer<AbstractClientPlayerEntity, PlayerEntityModel<AbstractClientPlayerEntity>> {
 
     public BackpackFeatureRenderer(FeatureRendererContext<AbstractClientPlayerEntity, PlayerEntityModel<AbstractClientPlayerEntity>> context) {
@@ -38,9 +44,8 @@ public class BackpackFeatureRenderer extends FeatureRenderer<AbstractClientPlaye
         ModelPart body = this.getContextModel().body;
         body.rotate(matrices);
 
-        // Scale up by 10%: 0.6 * 1.1 = 0.66
-        matrices.translate(0.0F, 0.3F, 0.35F);
-        matrices.scale(0.66F, 0.66F, 0.66F);
+        matrices.translate(0.0F, 0.20F, 0.35F);
+        matrices.multiply(net.minecraft.util.math.Vec3f.POSITIVE_Z.getDegreesQuaternion(180));
 
         client.getItemRenderer().renderItem(backpackStack,
                 ModelTransformation.Mode.NONE,

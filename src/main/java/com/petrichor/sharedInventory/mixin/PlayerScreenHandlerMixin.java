@@ -16,6 +16,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/**
+ * Mixin 注入 PlayerScreenHandler — 添加背包装备槽位并处理 Shift+点击转移
+ *
+ * 在原版 slot 45 (offhand) 之后的索引 46 处插入一个仅接受 SharedInventoryBackpack 的专用槽位。
+ * Shift+点击逻辑：背包物品从玩家物品栏移至装备槽，或从装备槽移回物品栏。
+ * BACKPACK_SLOT_INDEX = 46 对应 PlayerScreenHandler 的 slots 列表末尾（9 玩家物品 + 9 合成 + 9 护甲 + 9 物品栏 + 1 副手 + 1 背包 = 偏移后 46）
+ */
 @Mixin(PlayerScreenHandler.class)
 public abstract class PlayerScreenHandlerMixin {
 

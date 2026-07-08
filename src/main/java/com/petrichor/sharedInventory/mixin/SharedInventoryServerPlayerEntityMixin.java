@@ -3,7 +3,6 @@ package com.petrichor.sharedInventory.mixin;
 import com.petrichor.sharedInventory.inventory.SharedInventoryPlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -16,14 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 这确保了玩家死亡重生或从末地返回时，私人背包物品不丢失。
  */
 @Mixin(ServerPlayerEntity.class)
-public class SharedInventoryServerPlayerEntityMixin  {
-
-    /** 旧玩家实体 (用于获取旧背包数据) */
-    @Unique
-    SharedInventoryPlayerEntity oldPlayerEntity;
-    /** 新玩家实体 (用于设置新背包数据) */
-    @Unique
-    SharedInventoryPlayerEntity newPlayerEntity;
+public class SharedInventoryServerPlayerEntityMixin {
 
     /** 在 copyFrom 执行前，将旧玩家的私人背包迁移到新玩家 */
     @Inject(
@@ -31,12 +23,10 @@ public class SharedInventoryServerPlayerEntityMixin  {
             at = @At("HEAD")
     )
     public void keepSharedInventoryPrivateInventory(ServerPlayerEntity oldPlayer, boolean alive, CallbackInfo ci){
-        if(oldPlayer instanceof SharedInventoryPlayerEntity)
-            oldPlayerEntity=(SharedInventoryPlayerEntity)oldPlayer;
-        if(this instanceof SharedInventoryPlayerEntity)
-            newPlayerEntity=(SharedInventoryPlayerEntity)this;
-        newPlayerEntity.shared$setPrivateInventory(oldPlayerEntity.shared$getPrivateInventory());
-        newPlayerEntity.shared$setBackpackStack(oldPlayerEntity.shared$getBackpackStack());
-
+        if (oldPlayer instanceof SharedInventoryPlayerEntity oldShared
+                && this instanceof SharedInventoryPlayerEntity newShared) {
+            newShared.shared$setPrivateInventory(oldShared.shared$getPrivateInventory());
+            newShared.shared$setBackpackStack(oldShared.shared$getBackpackStack());
+        }
     }
 }

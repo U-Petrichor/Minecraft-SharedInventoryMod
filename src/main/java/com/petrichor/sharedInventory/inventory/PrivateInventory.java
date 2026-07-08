@@ -2,7 +2,7 @@ package com.petrichor.sharedInventory.inventory;
 
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
-import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.inventory.Inventories;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtList;
@@ -24,8 +24,11 @@ import java.util.Map;
  *
  * 数据来源: 通过 Mixin (SharedInventoryPlayerEntityMixin) 注入到 PlayerEntity 中，
  * 每个玩家拥有独立的 PrivateInventory 实例，跟随玩家 NBT 持久化
+ *
+ * 注意: 实现 Inventory 接口而非继承 SimpleInventory，
+ * 因为 SimpleInventory 的内部存储无法满足分页偏移访问的需求
  */
-public class PrivateInventory extends SimpleInventory {
+public class PrivateInventory implements Inventory {
     /** 每页槽位数 (6行 × 10列) */
     private static final int PER_PAGE_SIZE = 60;
     /** 最大页数 */
@@ -46,11 +49,84 @@ public class PrivateInventory extends SimpleInventory {
     private final AnvilData anvilData = new AnvilData();
     /** 锻造台数据 */
     private final SmithingData smithingData = new SmithingData();
+    /** markDirty 回调，由 SharedInventoryPlayerEntityMixin 设置，用于触发玩家数据保存 */
+    private Runnable dirtyCallback;
 
     public PrivateInventory() {}
     public int getCurrentPage() { return this.currentPage; }
-    public void setCurrentPage(int page) { this.currentPage = page; }
+    public void setCurrentPage(int page) {
+        if (page < 1 || page > MAX_PAGE) return;
+        this.currentPage = page;
+    }
     public int getPrivateStackMaxPage() { return MAX_PAGE; }
+
+    /** 设置 markDirty 回调 (由 Mixin 在注入时调用)，同时转发到子模块 */
+    public void setDirtyCallback(Runnable callback) {
+        this.dirtyCallback = callback;
+        this.furnaceLogic.setDirtyCallback(callback);
+        this.brewingLogic.setDirtyCallback(callback);
+        this.anvilData.setDirtyCallback(callback);
+        this.smithingData.setDirtyCallback(callback);
+    }
+    /** 检查 markDirty 回调是否已设置 */
+    public boolean hasDirtyCallback() { return this.dirtyCallback != null; }
+
+    // === Inventory 接口实现 ===
+
+    @Override
+    public int size() { return PER_PAGE_SIZE; }
+
+    @Override
+    public boolean isEmpty() {
+        for (int i = 0; i < PER_PAGE_SIZE; i++) {
+            if (!getStack(i).isEmpty()) return false;
+        }
+        return true;
+    }
+
+    @Override
+    public ItemStack getStack(int slot) {
+        int index = getPrivateStackStartIndex(slot);
+        return index >= 0 ? privateStack.get(index) : ItemStack.EMPTY;
+    }
+
+    @Override
+    public void setStack(int slot, ItemStack stack) {
+        int index = getPrivateStackStartIndex(slot);
+        if (index >= 0) privateStack.set(index, stack);
+    }
+
+    @Override
+    public ItemStack removeStack(int slot, int amount) {
+        int index = getPrivateStackStartIndex(slot);
+        if (index < 0) return ItemStack.EMPTY;
+        return Inventories.splitStack(privateStack, index, amount);
+    }
+
+    @Override
+    public ItemStack removeStack(int slot) {
+        int index = getPrivateStackStartIndex(slot);
+        if (index < 0) return ItemStack.EMPTY;
+        ItemStack stack = privateStack.get(index);
+        privateStack.set(index, ItemStack.EMPTY);
+        return stack;
+    }
+
+    @Override
+    public void markDirty() {
+        if (dirtyCallback != null) dirtyCallback.run();
+    }
+
+    @Override
+    public boolean canPlayerUse(PlayerEntity player) { return true; }
+
+    @Override
+    public void clear() {
+        int start = (currentPage - 1) * PER_PAGE_SIZE;
+        for (int i = start; i < start + PER_PAGE_SIZE; i++) {
+            privateStack.set(i, ItemStack.EMPTY);
+        }
+    }
 
     // === 标签系统 ===
 
@@ -90,19 +166,19 @@ public class PrivateInventory extends SimpleInventory {
     // === 物品存取 (基于当前页偏移) ===
 
     /** 将页面内 slot 转换为 privateStack 的绝对索引 */
-    public int getPrivateStackStartIndex(int slot) { if (slot < 0 || slot > PER_PAGE_SIZE) return -1; return slot + (currentPage - 1) * PER_PAGE_SIZE; }
-    @Override public void readNbtList(NbtList nbtList) {
+    public int getPrivateStackStartIndex(int slot) { if (slot < 0 || slot >= PER_PAGE_SIZE) return -1; return slot + (currentPage - 1) * PER_PAGE_SIZE; }
+    /** 从 NbtList 读取全部物品 (跨页连续存储) */
+    public void readNbtList(NbtList nbtList) {
         privateStack.clear();
         for (int i = 0; i < STACK_SIZE; i++) { NbtCompound itemTag = nbtList.getCompound(i); int slot = itemTag.getShort("Slot") & 0xFFFF; if (slot >= 0 && slot < STACK_SIZE) { this.privateStack.set(slot, ItemStack.fromNbt(itemTag)); } }
     }
-    @Override public NbtList toNbtList() {
+    /** 将全部物品写入 NbtList (非空物品) */
+    public NbtList toNbtList() {
         NbtList nbtList = new NbtList();
         for (int slot = 0; slot < STACK_SIZE; slot++) { ItemStack stack = this.privateStack.get(slot); if (!stack.isEmpty()) { NbtCompound itemTag = new NbtCompound(); itemTag.putShort("Slot", (short) slot); stack.writeNbt(itemTag); nbtList.add(itemTag); } }
         return nbtList;
     }
-    public ItemStack getStack(int slot) { int index = getPrivateStackStartIndex(slot); return index >= 0 ? privateStack.get(index) : ItemStack.EMPTY; }
-    public void setStack(int slot, ItemStack stack) { int index = getPrivateStackStartIndex(slot); if (index >= 0) privateStack.set(index, stack); }
-    public ItemStack removeStack(int slot, int amount) { int index = getPrivateStackStartIndex(slot); if (index < 0) return ItemStack.EMPTY; ItemStack stack = privateStack.get(index); if (stack.isEmpty()) return ItemStack.EMPTY; return stack.split(amount); }
+    // === NBT 序列化 ===
 
     // === 每刻更新 ===
 
@@ -122,6 +198,7 @@ public class PrivateInventory extends SimpleInventory {
     public BrewingLogic getBrewingLogic() { return brewingLogic; }
     public DefaultedList<ItemStack> getBrewingStack() { return brewingLogic.getBrewingStack(); }
     public Inventory getBrewingInventory() { return brewingLogic.getBrewingInventory(); }
+    public PropertyDelegate getBrewingPropertyDelegate() { return brewingLogic.getPropertyDelegate(); }
     public void readBrewingNbt(NbtCompound nbt) { brewingLogic.readNbt(nbt); }
     public void writeBrewingNbt(NbtCompound nbt) { brewingLogic.writeNbt(nbt); }
 

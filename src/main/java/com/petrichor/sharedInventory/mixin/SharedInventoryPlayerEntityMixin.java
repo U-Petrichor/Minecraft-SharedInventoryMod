@@ -1,5 +1,6 @@
 package com.petrichor.sharedInventory.mixin;
 
+import com.petrichor.sharedInventory.SharedInventoryMod;
 import com.petrichor.sharedInventory.inventory.SharedInventoryPlayerEntity;
 import com.petrichor.sharedInventory.inventory.PrivateInventory;
 import net.minecraft.entity.player.PlayerEntity;
@@ -11,6 +12,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Mixin 注入 PlayerEntity — 为每个玩家附加 PrivateInventory 和背包装备数据
+ *
+ * 注入点:
+ *   - writeCustomDataToNbt (TAIL): 将私人背包、工作站数据、标签、背包装备写入玩家 NBT
+ *   - readCustomDataFromNbt (TAIL): 从 NBT 恢复上述数据
+ *   - tick (TAIL): 驱动熔炉和酿造的每刻逻辑 (仅服务端)
+ *
+ * 线程安全: MC 服务端主线程模型保证 tick 和 NBT 操作不会并发执行。
+ * 所有字段使用 @Unique + sharedInventory$ 前缀避免名称冲突。
+ */
 @Mixin(PlayerEntity.class)
 public class SharedInventoryPlayerEntityMixin implements SharedInventoryPlayerEntity {
     @Unique
@@ -56,6 +68,13 @@ public class SharedInventoryPlayerEntityMixin implements SharedInventoryPlayerEn
     @Inject(method = "tick", at = @At("TAIL"))
     private void tick(CallbackInfo ci) {
         if (!((PlayerEntity)(Object)this).world.isClient) {
+            if (!this.sharedInventory$playerPrivateInventory.hasDirtyCallback()) {
+                this.sharedInventory$playerPrivateInventory.setDirtyCallback(() -> {
+                    // PlayerEntity 的 NBT 数据每 tick 通过 writeCustomDataToNbt 自动保存，
+                    // 此回调仅用于诊断日志，确保 markDirty 调用链可追踪
+                    SharedInventoryMod.LOGGER.debug("PrivateInventory marked dirty for player");
+                });
+            }
             this.sharedInventory$playerPrivateInventory.tick(((PlayerEntity)(Object)this).world);
         }
     }

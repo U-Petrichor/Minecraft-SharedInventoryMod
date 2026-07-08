@@ -1,16 +1,14 @@
 package com.petrichor.sharedInventory.screen;
 
 import com.mojang.datafixers.util.Pair;
-import com.petrichor.sharedInventory.SharedInventoryMod;
+import com.petrichor.sharedInventory.inventory.AnvilData;
 import com.petrichor.sharedInventory.inventory.ModObjects;
 import com.petrichor.sharedInventory.inventory.SharedInventoryPlayerEntity;
 import com.petrichor.sharedInventory.inventory.ToolType;
 import com.petrichor.sharedInventory.inventory.PrivateInventory;
-import com.petrichor.sharedInventory.network.PageUpdatePacket;
-import com.petrichor.sharedInventory.network.LabelUpdatePacket;
-import io.netty.buffer.Unpooled;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import com.petrichor.sharedInventory.mixin.ScreenHandlerAccessor;
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.mob.MobEntity;
@@ -22,12 +20,13 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.item.EnchantedBookItem;
 import net.minecraft.network.packet.s2c.play.ScreenHandlerSlotUpdateS2CPacket;
 import net.minecraft.recipe.CraftingRecipe;
 import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeMatcher;
 import net.minecraft.recipe.RecipeType;
+import net.minecraft.recipe.SmithingRecipe;
 import net.minecraft.recipe.book.RecipeBookCategory;
 import net.minecraft.screen.AbstractRecipeScreenHandler;
 import net.minecraft.screen.PlayerScreenHandler;
@@ -59,10 +58,16 @@ import java.util.Optional;
  */
 public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<CraftingInventory> {
 
+    /** 客户端回调接口，用于从 ScreenHandler 发送网络包而不直接依赖客户端 API */
+    public interface ClientCallback {
+        void sendPageUpdate(int page);
+        void sendLabelUpdate(int action, int page, String label);
+    }
+
     private final PlayerInventory playerInventory;
     private final Inventory inventory;
-    private boolean firstTime = true;
     private final SharedInventoryPlayerEntity sharedInventoryPlayerEntity;
+    private ClientCallback clientCallback;
 
     // 当前选中的工具类型
     private ToolType activeTool = ToolType.CRAFTING;
@@ -105,19 +110,24 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
         checkSize(inventory, 16);
         this.playerInventory = playerInventory;
         this.inventory = inventory;
+        if (!(playerInventory.player instanceof SharedInventoryPlayerEntity)) {
+            throw new IllegalStateException("PlayerEntity must implement SharedInventoryPlayerEntity (Mixin not applied?)");
+        }
         this.sharedInventoryPlayerEntity = (SharedInventoryPlayerEntity) playerInventory.player;
 
         this.addProperties(this.sharedInventoryPlayerEntity.shared$getPrivateInventory().getPropertyDelegate());
+        this.addProperties(this.sharedInventoryPlayerEntity.shared$getPrivateInventory().getBrewingPropertyDelegate());
 
         inventory.onOpen(playerInventory.player);
         rebuildSlots();
-        firstTime = false;
     }
 
     @Override
     public boolean canUse(PlayerEntity player) {
         return this.inventory.canPlayerUse(player);
     }
+
+    public void setClientCallback(ClientCallback callback) { this.clientCallback = callback; }
 
     public ToolType getActiveTool() {
         return this.activeTool;
@@ -139,7 +149,16 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
      * 6. 快捷栏 (9)
      */
     private void rebuildSlots() {
+        // 切换工具前，将合成格中的物品退还给玩家
+        if (!this.craftingInput.isEmpty() && !this.playerInventory.player.world.isClient) {
+            this.dropInventory(this.playerInventory.player, this.craftingInput);
+        }
+        this.craftingResult.clear();
+        this.craftingInput.clear();
+
         this.slots.clear();
+        ((ScreenHandlerAccessor) this).getTrackedStacks().clear();
+        ((ScreenHandlerAccessor) this).getPreviousTrackedStacks().clear();
 
         // === 1. 私人背包 6×10 ===
         // 起始 (22,35)，列间距18，行间距18
@@ -254,8 +273,8 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
                 this.addSlot(new Slot(this.craftingInput, j + i * 3, 223 + j * 18, 180 + i * 18));
             }
         }
-        // 合成结果 (285,198)
-        this.addSlot(new CraftingResultSlot(playerInventory.player, this.craftingInput, this.craftingResult, 0, 285, 198));
+        // 合成结果 (284,198)
+        this.addSlot(new CraftingResultSlot(playerInventory.player, this.craftingInput, this.craftingResult, 0, 284, 198));
     }
 
     private void addFurnaceSlots() {
@@ -280,21 +299,35 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     private void addBrewingSlots() {
         Inventory brewingInventory = sharedInventoryPlayerEntity.shared$getPrivateInventory().getBrewingInventory();
-        // 烈焰粉 (223,180)
+        // 烈焰粉 (223,180) — overlay (2,2)
         this.addSlot(new Slot(brewingInventory, 4, 223, 180) {
             @Override
             public boolean canInsert(ItemStack stack) {
                 return stack.isOf(Items.BLAZE_POWDER);
             }
         });
-        // 材料 (241,180)
-        this.addSlot(new Slot(brewingInventory, 3, 241, 180));
-        // 3 个药水瓶 (223,216), (241,216), (259,216)
+        // 材料 (260,180) — overlay (39,2)
+        this.addSlot(new Slot(brewingInventory, 3, 260, 180) {
+            @Override
+            public boolean canInsert(ItemStack stack) {
+                return net.minecraft.recipe.BrewingRecipeRegistry.isValidIngredient(stack);
+            }
+        });
+        // 3 个药水瓶 (238,212), (260,217), (282,212) — 只允许药水类物品
         for (int i = 0; i < 3; i++) {
-            this.addSlot(new Slot(brewingInventory, i, 223 + i * 18, 216) {
+            final int bottleSlot = i;
+            int x = 238 + i * 22;
+            int y = (i == 1) ? 217 : 212;
+            this.addSlot(new Slot(brewingInventory, bottleSlot, x, y) {
                 @Override
                 public int getMaxItemCount() {
                     return 1;
+                }
+
+                @Override
+                public boolean canInsert(ItemStack stack) {
+                    return stack.isOf(Items.POTION) || stack.isOf(Items.SPLASH_POTION)
+                            || stack.isOf(Items.LINGERING_POTION);
                 }
             });
         }
@@ -302,50 +335,88 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     private void addAnvilSlots() {
         Inventory anvilInventory = sharedInventoryPlayerEntity.shared$getPrivateInventory().getAnvilInventory();
-        // 输入1 (223,180)
-        this.addSlot(new Slot(anvilInventory, 0, 223, 180));
-        // 输入2 (241,180)
-        this.addSlot(new Slot(anvilInventory, 1, 241, 180));
-        // 输出 (277,198)
-        this.addSlot(new Slot(anvilInventory, 2, 277, 198) {
+        AnvilData anvilData = sharedInventoryPlayerEntity.shared$getPrivateInventory().getAnvilData();
+        // 输入1 (223,198) — markDirty 时触发 onContentChanged
+        this.addSlot(new Slot(anvilInventory, 0, 223, 198) {
+            @Override
+            public void markDirty() {
+                super.markDirty();
+                SharedInventoryScreenHandler.this.onContentChanged(this.inventory);
+            }
+        });
+        // 输入2 (251,198) — markDirty 时触发 onContentChanged
+        this.addSlot(new Slot(anvilInventory, 1, 251, 198) {
+            @Override
+            public void markDirty() {
+                super.markDirty();
+                SharedInventoryScreenHandler.this.onContentChanged(this.inventory);
+            }
+        });
+        // 输出 (283,198) — 取出时消耗输入并扣除经验
+        this.addSlot(new Slot(anvilInventory, 2, 283, 198) {
             @Override
             public boolean canInsert(ItemStack stack) {
                 return false;
+            }
+
+            @Override
+            public void onTakeItem(PlayerEntity player, ItemStack stack) {
+                int cost = anvilData.getRepairCost();
+                anvilInventory.setStack(0, ItemStack.EMPTY);
+                anvilInventory.setStack(1, ItemStack.EMPTY);
+                anvilData.setRepairCost(0);
+                if (!player.world.isClient && !player.isCreative()) {
+                    player.addExperienceLevels(-cost);
+                }
             }
         });
     }
 
     private void addSmithingSlots() {
         Inventory smithingInventory = sharedInventoryPlayerEntity.shared$getPrivateInventory().getSmithingInventory();
-        // 模板 (223,180)
-        this.addSlot(new Slot(smithingInventory, 0, 223, 180) {
+        // 模板 (224,181) — markDirty 时触发 onContentChanged
+        this.addSlot(new Slot(smithingInventory, 0, 224, 181) {
             @Override
             public int getMaxItemCount() {
                 return 1;
             }
+
+            @Override
+            public void markDirty() {
+                super.markDirty();
+                SharedInventoryScreenHandler.this.onContentChanged(this.inventory);
+            }
         });
-        // 材料 (241,180)
-        this.addSlot(new Slot(smithingInventory, 1, 241, 180));
-        // 输入 (223,198)
-        this.addSlot(new Slot(smithingInventory, 2, 223, 198));
-        // 输出 (277,198)
-        this.addSlot(new Slot(smithingInventory, 3, 277, 198) {
+        // 材料 (242,181) — markDirty 时触发 onContentChanged
+        this.addSlot(new Slot(smithingInventory, 1, 242, 181) {
+            @Override
+            public void markDirty() {
+                super.markDirty();
+                SharedInventoryScreenHandler.this.onContentChanged(this.inventory);
+            }
+        });
+        // 输入 (260,181) — markDirty 时触发 onContentChanged
+        this.addSlot(new Slot(smithingInventory, 2, 260, 181) {
+            @Override
+            public void markDirty() {
+                super.markDirty();
+                SharedInventoryScreenHandler.this.onContentChanged(this.inventory);
+            }
+        });
+        // 输出 (283,216) — 取出时消耗模板、材料、输入
+        this.addSlot(new Slot(smithingInventory, 3, 283, 216) {
             @Override
             public boolean canInsert(ItemStack stack) {
                 return false;
             }
-        });
-    }
 
-    @Override
-    protected Slot addSlot(Slot slot) {
-        if (firstTime)
-            return super.addSlot(slot);
-        else {
-            slot.id = this.slots.size();
-            this.slots.add(slot);
-        }
-        return slot;
+            @Override
+            public void onTakeItem(PlayerEntity player, ItemStack stack) {
+                smithingInventory.setStack(0, ItemStack.EMPTY);
+                smithingInventory.setStack(1, ItemStack.EMPTY);
+                smithingInventory.setStack(2, ItemStack.EMPTY);
+            }
+        });
     }
 
     // === 翻页逻辑 ===
@@ -370,18 +441,18 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
     }
 
     private void sendPageUpdatePacket() {
-        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-        buf.writeInt(getCurrentPage());
-        ClientPlayNetworking.send(SharedInventoryMod.PAGE_UPDATE_ID, buf);
+        if (clientCallback != null) {
+            clientCallback.sendPageUpdate(getCurrentPage());
+        }
     }
 
     // === 标签逻辑 ===
 
     public void setLabel(int page, String label) {
         sharedInventoryPlayerEntity.shared$getPrivateInventory().setPageLabel(page, label);
-        PacketByteBuf buf = new PacketByteBuf(Unpooled.buffer());
-        LabelUpdatePacket.encode(new LabelUpdatePacket(0, page, label), buf);
-        ClientPlayNetworking.send(SharedInventoryMod.LABEL_UPDATE_ID, buf);
+        if (clientCallback != null) {
+            clientCallback.sendLabelUpdate(0, page, label);
+        }
     }
 
     public void jumpToLabel(String label) {
@@ -425,6 +496,18 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     public boolean isBurning() {
         return this.sharedInventoryPlayerEntity.shared$getPrivateInventory().getPropertyDelegate().get(0) > 0;
+    }
+
+    // === 酿造进度 ===
+
+    /** 酿造进度 0-400，400=完成 */
+    public int getBrewTime() {
+        return this.sharedInventoryPlayerEntity.shared$getPrivateInventory().getBrewingPropertyDelegate().get(0);
+    }
+
+    /** 酿造燃料剩余份数 (每份 20 次酿造) */
+    public int getBrewFuel() {
+        return this.sharedInventoryPlayerEntity.shared$getPrivateInventory().getBrewingPropertyDelegate().get(1);
     }
 
     // === Shift+点击 ===
@@ -493,7 +576,17 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     @Override
     public void onContentChanged(Inventory inventory) {
-        updateResult(this, this.playerInventory.player.world, this.playerInventory.player, this.craftingInput, this.craftingResult);
+        switch (this.activeTool) {
+            case CRAFTING:
+                updateResult(this, this.playerInventory.player.world, this.playerInventory.player, this.craftingInput, this.craftingResult);
+                break;
+            case ANVIL:
+                updateAnvilResult();
+                break;
+            case SMITHING:
+                updateSmithingResult();
+                break;
+        }
     }
 
     private void updateResult(
@@ -510,10 +603,240 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
                 }
             }
 
+            int resultSlotIndex = this.toolSlotStart + 9;
             resultInventory.setStack(0, itemStack);
-            handler.setPreviousTrackedSlot(0, itemStack);
-            serverPlayerEntity.networkHandler.sendPacket(new ScreenHandlerSlotUpdateS2CPacket(handler.syncId, handler.nextRevision(), 0, itemStack));
+            handler.setPreviousTrackedSlot(resultSlotIndex, itemStack);
+            serverPlayerEntity.networkHandler.sendPacket(new ScreenHandlerSlotUpdateS2CPacket(handler.syncId, handler.nextRevision(), resultSlotIndex, itemStack));
         }
+    }
+
+    // === 铁砧逻辑 ===
+
+    private void updateAnvilResult() {
+        if (this.playerInventory.player.world.isClient) return;
+        ServerPlayerEntity serverPlayer = (ServerPlayerEntity) this.playerInventory.player;
+        AnvilData anvilData = sharedInventoryPlayerEntity.shared$getPrivateInventory().getAnvilData();
+        Inventory anvilInventory = sharedInventoryPlayerEntity.shared$getPrivateInventory().getAnvilInventory();
+        ItemStack input1 = anvilInventory.getStack(0);
+        ItemStack input2 = anvilInventory.getStack(1);
+
+        if (input1.isEmpty()) {
+            setAnvilOutput(anvilInventory, anvilData, ItemStack.EMPTY, 0);
+            return;
+        }
+
+        int materialCost = 0;
+        int priorWork = input1.getRepairCost();
+        int renameCost = 0;
+        ItemStack result = input1.copy();
+
+        if (!input2.isEmpty()) {
+            priorWork += input2.getRepairCost();
+            boolean isBook = input2.isOf(Items.ENCHANTED_BOOK)
+                    && !EnchantedBookItem.getEnchantmentNbt(input2).isEmpty();
+
+            // 材料修复 (Item.canRepair)
+            if (result.isDamageable() && result.getItem().canRepair(input1, input2)) {
+                int damage = result.getDamage();
+                int repairAmount = Math.min(damage, result.getMaxDamage() / 4);
+                if (repairAmount > 0) {
+                    int itemsUsed = 0;
+                    while (repairAmount > 0 && itemsUsed < input2.getCount()) {
+                        result.setDamage(result.getDamage() - repairAmount);
+                        materialCost++;
+                        repairAmount = Math.min(result.getDamage(), result.getMaxDamage() / 4);
+                        itemsUsed++;
+                    }
+                    // 材料修复不走附魔合并，直接跳到重命名
+                    finishAnvilResult(anvilData, anvilInventory, result, input1, input2, materialCost, priorWork, serverPlayer);
+                    return;
+                }
+            }
+
+            // 合并条件检查：不是书且不是同类物品 → 无效
+            if (!isBook && !result.isOf(input2.getItem())) {
+                setAnvilOutput(anvilInventory, anvilData, ItemStack.EMPTY, 0);
+                return;
+            }
+            // 同类但不可损坏 → 无效
+            if (!isBook && result.isOf(input2.getItem()) && !result.isDamageable()) {
+                setAnvilOutput(anvilInventory, anvilData, ItemStack.EMPTY, 0);
+                return;
+            }
+
+            // 耐久度合并 (同类可损坏物品)
+            if (result.isDamageable() && !isBook) {
+                int input1Durability = input1.getMaxDamage() - input1.getDamage();
+                int input2Durability = input2.getMaxDamage() - input2.getDamage();
+                int bonus = input2Durability * result.getMaxDamage() * 12 / 100;
+                int totalDurability = input1Durability + bonus;
+                int newDamage = result.getMaxDamage() - totalDurability;
+                if (newDamage < 0) newDamage = 0;
+                if (newDamage < result.getDamage()) {
+                    result.setDamage(newDamage);
+                    materialCost += 2;
+                }
+            }
+
+            // 附魔合并
+            Map<Enchantment, Integer> resultEnchantments = EnchantmentHelper.get(result);
+            Map<Enchantment, Integer> input2Enchantments = isBook
+                    ? EnchantmentHelper.fromNbt(EnchantedBookItem.getEnchantmentNbt(input2))
+                    : EnchantmentHelper.get(input2);
+
+            boolean hasCompatible = false;
+            boolean hasIncompatible = false;
+
+            for (Map.Entry<Enchantment, Integer> entry : input2Enchantments.entrySet()) {
+                Enchantment ench = entry.getKey();
+                if (ench == null) continue;
+                int newLevel = entry.getValue();
+                int currentLevel = resultEnchantments.getOrDefault(ench, 0);
+
+                if (currentLevel == newLevel) {
+                    newLevel = Math.min(newLevel + 1, ench.getMaxLevel());
+                } else {
+                    newLevel = Math.max(newLevel, currentLevel);
+                }
+
+                // 检查附魔是否适用于该物品
+                boolean canApply = ench.isAcceptableItem(input1);
+                if (serverPlayer.isCreative() && input1.isOf(Items.ENCHANTED_BOOK)) {
+                    canApply = true;
+                }
+
+                // 检查与已有附魔的兼容性
+                for (Enchantment existing : resultEnchantments.keySet()) {
+                    if (existing != ench && !ench.canCombine(existing)) {
+                        canApply = false;
+                        materialCost++;
+                    }
+                }
+
+                if (!canApply) {
+                    hasIncompatible = true;
+                    continue;
+                }
+
+                hasCompatible = true;
+                resultEnchantments.put(ench, newLevel);
+
+                // 附魔费用: rarity × level (附魔书半价)
+                int rarityCost = getRarityCost(ench.getRarity());
+                if (isBook) {
+                    rarityCost = Math.max(1, rarityCost / 2);
+                }
+                materialCost += rarityCost * newLevel;
+
+                // 可堆叠物品强制太贵
+                if (input1.getCount() > 1) {
+                    materialCost = 40;
+                }
+            }
+
+            // 所有附魔都不兼容
+            if (hasIncompatible && !hasCompatible) {
+                setAnvilOutput(anvilInventory, anvilData, ItemStack.EMPTY, 0);
+                return;
+            }
+
+            EnchantmentHelper.set(resultEnchantments, result);
+        }
+
+        finishAnvilResult(anvilData, anvilInventory, result, input1, input2, materialCost, priorWork, serverPlayer);
+    }
+
+    /** 铁砧重命名与最终费用计算 */
+    private void finishAnvilResult(AnvilData anvilData, Inventory anvilInventory, ItemStack result, ItemStack input1, ItemStack input2, int materialCost, int priorWork, ServerPlayerEntity serverPlayer) {
+        int renameCost = 0;
+
+        // 重命名
+        String renameText = anvilData.getRenameText();
+        if (renameText != null && !renameText.isEmpty()) {
+            if (!renameText.equals(input1.getName().getString())) {
+                renameCost = 1;
+                materialCost += renameCost;
+                result.setCustomName(net.minecraft.text.Text.of(renameText));
+            }
+        } else if (input1.hasCustomName()) {
+            renameCost = 1;
+            materialCost += renameCost;
+            result.removeCustomName();
+        }
+
+        int totalCost = priorWork + materialCost;
+
+        // 无材料费用 → 空结果
+        if (materialCost <= 0) {
+            result = ItemStack.EMPTY;
+        }
+
+        // 仅重命名时，费用上限放宽到39
+        if (renameCost == materialCost && renameCost > 0 && totalCost >= 40) {
+            totalCost = 39;
+        }
+
+        // 太贵了
+        if (totalCost >= 40 && !serverPlayer.isCreative()) {
+            result = ItemStack.EMPTY;
+        }
+
+        // 设置结果的先前修复惩罚
+        if (!result.isEmpty()) {
+            int newRepairCost = result.getRepairCost();
+            if (!input2.isEmpty()) {
+                newRepairCost = Math.max(newRepairCost, input2.getRepairCost());
+            }
+            if (renameCost != materialCost || renameCost == 0) {
+                newRepairCost = getNextCost(newRepairCost);
+            }
+            result.setRepairCost(newRepairCost);
+        }
+
+        setAnvilOutput(anvilInventory, anvilData, result, totalCost >= 40 && !serverPlayer.isCreative() ? 0 : totalCost);
+    }
+
+    /** 设置铁砧输出槽并同步 */
+    private void setAnvilOutput(Inventory anvilInventory, AnvilData anvilData, ItemStack result, int cost) {
+        anvilInventory.setStack(2, result);
+        anvilData.setRepairCost(cost);
+        sendSlotUpdate(toolSlotStart + 2, result);
+    }
+
+    /** 铁砧先前修复惩罚递增: cost * 2 + 1 */
+    private static int getNextCost(int cost) {
+        return cost * 2 + 1;
+    }
+
+    /** 附魔稀有度费用: COMMON=1, UNCOMMON=2, RARE=4, VERY_RARE=8 */
+    private static int getRarityCost(Enchantment.Rarity rarity) {
+        switch (rarity) {
+            case UNCOMMON: return 2;
+            case RARE: return 4;
+            case VERY_RARE: return 8;
+            default: return 1;
+        }
+    }
+
+    // === 锻造台逻辑 ===
+
+    private void updateSmithingResult() {
+        if (this.playerInventory.player.world.isClient) return;
+        World world = this.playerInventory.player.world;
+        Inventory smithingInventory = sharedInventoryPlayerEntity.shared$getPrivateInventory().getSmithingInventory();
+
+        Optional<SmithingRecipe> optional = world.getRecipeManager().getFirstMatch(RecipeType.SMITHING, smithingInventory, world);
+        ItemStack result = optional.map(recipe -> recipe.craft(smithingInventory)).orElse(ItemStack.EMPTY);
+
+        smithingInventory.setStack(3, result);
+        sendSlotUpdate(toolSlotStart + 3, result);
+    }
+
+    /** 向客户端发送指定槽位的更新包 */
+    private void sendSlotUpdate(int handlerSlotIndex, ItemStack stack) {
+        if (!(this.playerInventory.player instanceof ServerPlayerEntity serverPlayer)) return;
+        this.setPreviousTrackedSlot(handlerSlotIndex, stack);
+        serverPlayer.networkHandler.sendPacket(new ScreenHandlerSlotUpdateS2CPacket(this.syncId, this.nextRevision(), handlerSlotIndex, stack));
     }
 
     @Override
@@ -534,7 +857,7 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     @Override
     public int getCraftingResultSlotIndex() {
-        return 0;
+        return this.activeTool == ToolType.CRAFTING ? 0 : -1;
     }
 
     @Override
@@ -549,7 +872,7 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     @Override
     public int getCraftingSlotCount() {
-        return 10;
+        return this.activeTool == ToolType.CRAFTING ? 10 : 0;
     }
 
     @Override

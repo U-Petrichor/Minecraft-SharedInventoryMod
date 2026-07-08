@@ -12,6 +12,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.TranslatableText;
 
+/**
+ * 打开背包网络包 — 服务端处理客户端按 B 键打开背包的请求
+ *
+ * 流程: 客户端按键 → 发送 OPEN_BACKPACK_ID 包 → 服务端查找玩家装备的背包 →
+ * 读取背包绑定的 SharedInventoryChestBlockEntity → 打开 SharedInventoryScreenHandler
+ * 若未装备背包或未绑定共享核心，返回提示消息
+ */
 public class OpenBackpackPacket {
 
     public static void register() {
@@ -42,7 +49,7 @@ public class OpenBackpackPacket {
             serverPlayer.openHandledScreen(new net.minecraft.screen.NamedScreenHandlerFactory() {
                 @Override
                 public net.minecraft.text.Text getDisplayName() {
-                    return net.minecraft.text.Text.of("Shared Inventory");
+                    return new TranslatableText("item.shared_inventory_mod.shared_inventory_backpack");
                 }
 
                 @Override

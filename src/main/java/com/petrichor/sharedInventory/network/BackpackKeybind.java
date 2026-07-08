@@ -27,7 +27,7 @@ public class BackpackKeybind {
                 "key.shared_inventory_mod.open_backpack",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_B,
-                "key.categories.gameplay"
+                "key.categories.shared_inventory_mod"
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {

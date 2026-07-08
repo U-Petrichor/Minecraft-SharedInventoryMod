@@ -25,13 +25,13 @@ import net.minecraft.util.registry.Registry;
 public class ModObjects {
     //=== 物品注册 ===
     /** 共享背包: 不可堆叠、防火 */
-    public static final Item SHARED_INVENTORY_BACKPACK =registerItems("shared_inventory_backpack",new SharedInventoryBackpack(new Item.Settings().maxCount(1).fireproof()));
+    public static final Item SHARED_INVENTORY_BACKPACK =registerItem("shared_inventory_backpack",new SharedInventoryBackpack(new Item.Settings().maxCount(1).fireproof()));
 
     //=== 方块注册 ===
     /** 共享核心方块: 石头材质、需工具挖掘、高爆炸抗性 */
-    public static final Block SHARED_INVENTORY_CHEST_BLOCK =registerBlocks("shared_inventory_chest_block",new SharedInventoryChestBlock(AbstractBlock.Settings.of(Material.STONE).requiresTool() .strength(1.5f,1200f)));
+    public static final Block SHARED_INVENTORY_CHEST_BLOCK =registerBlock("shared_inventory_chest_block",new SharedInventoryChestBlock(AbstractBlock.Settings.of(Material.STONE).requiresTool() .strength(1.5f,1200f).nonOpaque()));
     /** 共享核心方块物品: 可堆叠64、防火 */
-    public static final Item SHARED_INVENTORY_CHEST =registerItems("shared_inventory_chest_block",new BlockItem(SHARED_INVENTORY_CHEST_BLOCK,new Item.Settings().maxCount(64).fireproof()));
+    public static final Item SHARED_INVENTORY_CHEST =registerItem("shared_inventory_chest_block",new BlockItem(SHARED_INVENTORY_CHEST_BLOCK,new Item.Settings().maxCount(64).fireproof()));
     /** 共享核心方块实体 */
     public static final BlockEntityType<SharedInventoryChestBlockEntity> SHARED_INVENTORY_CHEST_BLOCK_ENTITY = registerBlockEntity("shared_inventory_chest_block_entity", FabricBlockEntityTypeBuilder.create(SharedInventoryChestBlockEntity::create, SHARED_INVENTORY_CHEST_BLOCK).build());
 
@@ -41,12 +41,12 @@ public class ModObjects {
 
     //=== 注册辅助方法 ===
     /** 注册物品到 Minecraft 注册表 */
-    private static Item registerItems(String name, Item item){
+    private static Item registerItem(String name, Item item){
         return Registry.register(Registry.ITEM,new Identifier(SharedInventoryMod.MOD_ID,name),item);
 
     }
     /** 注册方块到 Minecraft 注册表 */
-    private static Block registerBlocks(String name, Block block){
+    private static Block registerBlock(String name, Block block){
         return Registry.register(Registry.BLOCK,new Identifier(SharedInventoryMod.MOD_ID,name),block);
     }
     /** 注册方块实体类型到 Minecraft 注册表 */

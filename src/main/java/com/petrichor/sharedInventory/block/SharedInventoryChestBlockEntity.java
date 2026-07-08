@@ -1,15 +1,16 @@
 package com.petrichor.sharedInventory.block;
 
+import com.petrichor.sharedInventory.inventory.DefaultedListInventory;
 import com.petrichor.sharedInventory.inventory.ModObjects;
-import net.minecraft.block.*;
+import com.petrichor.sharedInventory.item.BackpackInventory;
+import com.petrichor.sharedInventory.screen.SharedInventoryScreenHandler;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.text.Text;
@@ -27,64 +28,44 @@ import net.minecraft.util.math.BlockPos;
 public class SharedInventoryChestBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
 
     /** 公共背包槽位数 (4×4) */
-    private final int publicStackSize=16;
+    private static final int PUBLIC_STACK_SIZE = 16;
     /** 公共物品列表，所有绑定此核心的玩家共享 */
-    public final DefaultedList<ItemStack> publicStack = DefaultedList.ofSize(publicStackSize, ItemStack.EMPTY);
+    private final DefaultedList<ItemStack> publicStack = DefaultedList.ofSize(PUBLIC_STACK_SIZE, ItemStack.EMPTY);
 
-
-    //以下是原有的，上面的是inventory里面搬过来的，要慢慢地处理
-    public SharedInventoryChestBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+    public SharedInventoryChestBlockEntity(BlockPos pos, BlockState state) {
         super(ModObjects.SHARED_INVENTORY_CHEST_BLOCK_ENTITY, pos, state);
     }
 
     public static SharedInventoryChestBlockEntity create(BlockPos pos, BlockState state) {
-        return new SharedInventoryChestBlockEntity(ModObjects.SHARED_INVENTORY_CHEST_BLOCK_ENTITY, pos, state);
+        return new SharedInventoryChestBlockEntity(pos, state);
     }
 
+    /**
+     * 获取公共物品列表 (供 BackpackInventory 委托使用)
+     * 警告: 返回可变的内部列表，直接修改不会触发 markDirty()。
+     * 应通过 BackpackInventory 操作以确保数据持久化。
+     */
+    public DefaultedList<ItemStack> getPublicStack() { return this.publicStack; }
 
     @Override
     public void readNbt(NbtCompound nbt) {
         super.readNbt(nbt);
-        // 读取 publicStack
-        if (nbt.contains("PublicItems", NbtElement.LIST_TYPE)) {
-            NbtList publicItems = nbt.getList("PublicItems", NbtElement.COMPOUND_TYPE);
-            for (int i = 0; i < publicItems.size(); i++) {
-                NbtCompound itemTag = publicItems.getCompound(i);
-                int slot = itemTag.getInt("Slot");
-                if (slot >= 0 && slot < this.publicStack.size()) {
-                    this.publicStack.set(slot, ItemStack.fromNbt(itemTag));
-                }
-            }
-        }
+        DefaultedListInventory.readFromNbt(this.publicStack, nbt, "PublicItems");
     }
 
-    // 保存数据到 NBT
     @Override
     public void writeNbt(NbtCompound nbt) {
         super.writeNbt(nbt);
-        // 写入 publicStack 到 "PublicItems" 键
-        NbtList publicItems = new NbtList();
-        for (int i = 0; i < this.publicStack.size(); i++) {
-            ItemStack stack = this.publicStack.get(i);
-            if (!stack.isEmpty()) {
-                NbtCompound itemTag = new NbtCompound();
-                itemTag.putInt("Slot", i);
-                stack.writeNbt(itemTag);
-                publicItems.add(itemTag);
-            }
-        }
-        nbt.put("PublicItems", publicItems);
+        DefaultedListInventory.writeToNbt(this.publicStack, nbt, "PublicItems");
     }
 
     @Override
     public Text getDisplayName() {
-        return new TranslatableText("block_entity.shared_inventory_mod.shared_inventory_chest_block_entity_title");
+        return new TranslatableText("block.shared_inventory_mod.shared_inventory_chest_block");
     }
 
     @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
-        return null;
+        return new SharedInventoryScreenHandler(syncId, inv, new BackpackInventory(this));
     }
-
-
 }

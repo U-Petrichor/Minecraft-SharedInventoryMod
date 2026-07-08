@@ -27,11 +27,14 @@ public class PageUpdatePacket {
         return new PageUpdatePacket(buf.readInt());
     }
 
-    /** 服务端处理: 更新玩家的私人背包当前页码 */
+    /** 服务端处理: 更新玩家的私人背包当前页码 (范围校验: 1 ~ MAX_PAGE)，然后同步槽位到客户端 */
     public static void handle(PageUpdatePacket packet, ServerPlayerEntity player) {
-        // 确保 inventory 是经过 Mixin 改造后的对象
         if (player instanceof SharedInventoryPlayerEntity sharedInventoryPlayerEntity) {
-            sharedInventoryPlayerEntity.shared$getPrivateInventory().setCurrentPage((packet.newPage));
+            PrivateInventory inv = sharedInventoryPlayerEntity.shared$getPrivateInventory();
+            int page = Math.max(1, Math.min(packet.newPage, inv.getPrivateStackMaxPage()));
+            inv.setCurrentPage(page);
+            // 同步所有槽位到客户端，确保翻页后显示正确的物品
+            player.currentScreenHandler.sendContentUpdates();
         }
     }
 }

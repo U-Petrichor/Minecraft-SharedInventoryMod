@@ -29,36 +29,43 @@ public class BackpackInventory implements Inventory {
     @Override
     public int size() { return PUBLIC_STACK_SIZE; }
 
+    /** 检查关联的 BlockEntity 是否仍然有效 (区块未卸载) */
+    public boolean isLinkedBlockEntityValid() {
+        return this.linkedBlockEntity != null && !this.linkedBlockEntity.isRemoved();
+    }
+
     @Override
     public ItemStack getStack(int slot) {
         if (slot >= 0 && slot < PUBLIC_STACK_SIZE)
-            return this.linkedBlockEntity.publicStack.get(slot);
+            return this.linkedBlockEntity.getPublicStack().get(slot);
         return ItemStack.EMPTY;
     }
 
     @Override
     public void setStack(int slot, ItemStack stack) {
-        if (slot >= 0 && slot < PUBLIC_STACK_SIZE) {
-            this.linkedBlockEntity.publicStack.set(slot, stack);
-            this.linkedBlockEntity.markDirty();
-        }
+        if (slot < 0 || slot >= PUBLIC_STACK_SIZE) return;
         if (!stack.isEmpty() && stack.getCount() > this.getMaxCountPerStack()) {
             stack.setCount(this.getMaxCountPerStack());
         }
-        this.markDirty();
+        this.linkedBlockEntity.getPublicStack().set(slot, stack);
+        this.linkedBlockEntity.markDirty();
     }
 
     @Override
     public ItemStack removeStack(int slot, int amount) {
-        ItemStack result = Inventories.splitStack(this.linkedBlockEntity.publicStack, slot, amount);
-        if (!result.isEmpty()) this.markDirty();
+        if (slot < 0 || slot >= PUBLIC_STACK_SIZE) return ItemStack.EMPTY;
+        ItemStack result = Inventories.splitStack(this.linkedBlockEntity.getPublicStack(), slot, amount);
+        if (!result.isEmpty()) this.linkedBlockEntity.markDirty();
         return result;
     }
 
     @Override
     public ItemStack removeStack(int slot) {
-        if (slot >= 0 && slot < PUBLIC_STACK_SIZE)
-            return Inventories.removeStack(this.linkedBlockEntity.publicStack, slot);
+        if (slot >= 0 && slot < PUBLIC_STACK_SIZE) {
+            ItemStack result = Inventories.removeStack(this.linkedBlockEntity.getPublicStack(), slot);
+            if (!result.isEmpty()) this.linkedBlockEntity.markDirty();
+            return result;
+        }
         return ItemStack.EMPTY;
     }
 
@@ -74,8 +81,13 @@ public class BackpackInventory implements Inventory {
     }
 
     @Override
-    public boolean canPlayerUse(PlayerEntity player) { return true; }
+    public boolean canPlayerUse(PlayerEntity player) { return isLinkedBlockEntityValid(); }
 
     @Override
-    public void clear() {}
+    public void clear() {
+        for (int i = 0; i < PUBLIC_STACK_SIZE; i++) {
+            this.linkedBlockEntity.getPublicStack().set(i, ItemStack.EMPTY);
+        }
+        this.linkedBlockEntity.markDirty();
+    }
 }
