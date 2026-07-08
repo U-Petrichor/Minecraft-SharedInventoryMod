@@ -1,5 +1,7 @@
-package com.umut.sharedInventory.objects;
+package com.umut.sharedInventory.network;
 
+import com.umut.sharedInventory.inventory.SharedInventoryPlayerEntity;
+import com.umut.sharedInventory.inventory.PrivateInventory;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 
@@ -19,9 +21,11 @@ public class PageUpdatePacket {
     }
 
     public static void handle(PageUpdatePacket packet, ServerPlayerEntity player) {
-        // 确保 inventory 是经过 Mixin 改造后的对象
-        if (player instanceof SharedInventoryPlayerEntity shardInventoryPlayerEntity) {
-            shardInventoryPlayerEntity.shared_inventory1_18_2$getPrivateInventory().setCurrentPage((packet.newPage));
+        if (player instanceof SharedInventoryPlayerEntity sharedInventoryPlayerEntity) {
+            PrivateInventory inv = sharedInventoryPlayerEntity.shared$getPrivateInventory();
+            int page = Math.max(1, Math.min(packet.newPage, inv.getPrivateStackMaxPage()));
+            inv.setCurrentPage(page);
+            player.currentScreenHandler.sendContentUpdates();
         }
     }
 }
