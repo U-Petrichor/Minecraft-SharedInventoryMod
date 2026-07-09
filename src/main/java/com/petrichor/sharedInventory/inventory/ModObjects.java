@@ -29,8 +29,8 @@ public class ModObjects {
     public static final Item SHARED_INVENTORY_BACKPACK =registerItem("shared_inventory_backpack",new SharedInventoryBackpack(new Item.Settings().maxCount(1).fireproof()));
 
     //=== 方块注册 ===
-    /** 共享核心方块: 需工具挖掘、高爆炸抗性 */
-    public static final Block SHARED_INVENTORY_CHEST_BLOCK =registerBlock("shared_inventory_chest_block",new SharedInventoryChestBlock(AbstractBlock.Settings.create().requiresTool() .strength(1.5f,1200f)));
+    /** 共享核心方块: 非完整不透明方块，避免遮挡相邻方块贴图 */
+    public static final Block SHARED_INVENTORY_CHEST_BLOCK =registerBlock("shared_inventory_chest_block",new SharedInventoryChestBlock(AbstractBlock.Settings.create().requiresTool() .strength(1.5f,1200f).nonOpaque()));
     /** 共享核心方块物品: 可堆叠64、防火 */
     public static final Item SHARED_INVENTORY_CHEST =registerItem("shared_inventory_chest_block",new BlockItem(SHARED_INVENTORY_CHEST_BLOCK,new Item.Settings().maxCount(64).fireproof()));
     /** 共享核心方块实体 */
