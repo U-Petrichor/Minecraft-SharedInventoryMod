@@ -92,7 +92,7 @@ public class SharedInventoryScreen extends HandledScreen<SharedInventoryScreenHa
             // Flame
             if (this.handler.isBurning()) {
                 int m = this.handler.getFuelProgress(); // 0~13
-                context.drawTexture(FURNACE_TEXTURE, furnaceBaseX + 3, furnaceBaseY + 35 - m, 176, 13 - m, 14, m + 1, 256, 256);
+                context.drawTexture(FURNACE_TEXTURE, furnaceBaseX + 3, furnaceBaseY + 34 - m, 176, 13 - m, 14, m + 1, 256, 256);
             }
 
             // Arrow — empty background
