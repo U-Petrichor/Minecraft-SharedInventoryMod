@@ -289,8 +289,8 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
                 return AbstractFurnaceBlockEntity.canUseAsFuel(stack) || stack.isOf(Items.BUCKET);
             }
         });
-        // 输出 (261,198)
-        this.addSlot(new Slot(furnaceInventory, 2, 261, 198) {
+        // 输出 (271,198)
+        this.addSlot(new Slot(furnaceInventory, 2, 271, 198) {
             @Override
             public boolean canInsert(ItemStack stack) {
                 return false;
@@ -521,6 +521,24 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
             ItemStack originalStack = slot.getStack();
             newStack = originalStack.copy();
 
+            if (this.activeTool == ToolType.CRAFTING && invSlot == this.getCraftingResultSlotIndex()) {
+                if (!this.insertItem(originalStack, playerInvSlotStart, playerInvSlotEnd, false)) {
+                    return ItemStack.EMPTY;
+                }
+                int movedCount = newStack.getCount() - originalStack.getCount();
+                if (movedCount <= 0) {
+                    return ItemStack.EMPTY;
+                }
+                ItemStack takenStack = newStack.copy();
+                takenStack.setCount(movedCount);
+                if (originalStack.isEmpty()) {
+                    slot.setStack(ItemStack.EMPTY);
+                } else {
+                    slot.markDirty();
+                }
+                slot.onTakeItem(player, takenStack);
+                return newStack;
+            }
             if (invSlot >= playerInvSlotStart && invSlot < playerInvSlotEnd) {
                 // 从玩家物品栏/快捷栏 → 优先放入工具区，再公共背包，再私人背包
                 if (!this.insertItem(originalStack, toolSlotStart, toolSlotEnd, false)) {
@@ -858,7 +876,8 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     @Override
     public int getCraftingResultSlotIndex() {
-        return this.activeTool == ToolType.CRAFTING ? 0 : -1;
+        // Result slot is after the 3x3 crafting input slots in this custom layout.
+        return this.activeTool == ToolType.CRAFTING ? this.toolSlotStart + 9 : -1;
     }
 
     @Override
@@ -883,6 +902,6 @@ public class SharedInventoryScreenHandler extends AbstractRecipeScreenHandler<Cr
 
     @Override
     public boolean canInsertIntoSlot(int index) {
-        return false;
+        return index != this.getCraftingResultSlotIndex();
     }
 }
