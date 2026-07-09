@@ -79,7 +79,7 @@ public class SharedInventoryScreen extends HandledScreen<SharedInventoryScreenHa
 
             if (this.handler.isBurning()) {
                 int m = this.handler.getFuelProgress();
-                this.drawTexture(matrices, furnaceBaseX + 3, furnaceBaseY + 35 - m, 176, 13 - m, 14, m + 1);
+                this.drawTexture(matrices, furnaceBaseX + 3, furnaceBaseY + 34 - m, 176, 13 - m, 14, m + 1);
             }
 
             this.drawTexture(matrices, furnaceBaseX + 20, furnaceBaseY + 19, 79, 34, 24, 16);
