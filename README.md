@@ -136,12 +136,9 @@ src/main/java/com/petrichor/sharedInventory/
 
 ## 📜 许可证
 
-本项目基于 [**CC BY-NC 4.0**（署名-非商业性使用 4.0 国际）](https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans) 协议发布。
+本项目基于 [**GPL-3.0**（GNU General Public License v3.0）](https://www.gnu.org/licenses/gpl-3.0.html) 协议发布。
 
-在遵守以下条件的前提下，你可以自由地**分享**与**改编**（参考、修改、再分发）本作品：
-
-- ✏️ **署名** — 必须注明原作者（Petrichor）并提供许可证链接。
-- 🚫 **非商业性使用** — 不得用于商业目的（包括但不限于直接售卖本模组或其衍生作品）。
+你可以自由地**使用、研究、修改和分发**本软件，但任何衍生作品必须同样以 GPL-3.0 协议发布并开源。
 
 完整法律文本见 [LICENSE](./LICENSE)。
 
