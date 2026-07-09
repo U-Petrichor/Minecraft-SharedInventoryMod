@@ -136,12 +136,9 @@ To add a new language, create a corresponding JSON file in `src/main/resources/a
 
 ## 📜 License
 
-This project is released under the [**CC BY-NC 4.0** (Attribution-NonCommercial 4.0 International)](https://creativecommons.org/licenses/by-nc/4.0/deed.en) license.
+This project is released under the [**GPL-3.0** (GNU General Public License v3.0)](https://www.gnu.org/licenses/gpl-3.0.html) license.
 
-You are free to **share** and **adapt** (reference, modify, redistribute) this work under the following conditions:
-
-- ✏️ **Attribution** — You must give appropriate credit to the original author (Petrichor) and provide a link to the license.
-- 🚫 **NonCommercial** — You may not use the material for commercial purposes (including but not limited to selling this mod or its derivatives).
+You are free to **use, study, modify, and distribute** this software, but any derivative works must also be released under the GPL-3.0 license and open-sourced.
 
 See [LICENSE](./LICENSE) for the full legal text.
 
