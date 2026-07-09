@@ -59,12 +59,12 @@ jobs:
           cp "$source_jar" "$asset_name"
 
           notes_file="$(mktemp)"
-          cat > "$notes_file" <<EOF
-Shared Inventory for Minecraft ${minecraft_version}.
-
-Choose the jar by loader and mod version.
-Forge and NeoForge builds can be added to this same Minecraft-version release later.
-EOF
+          printf '%s\n' \
+            "Shared Inventory for Minecraft ${minecraft_version}." \
+            "" \
+            "Choose the jar by loader and mod version." \
+            "Forge and NeoForge builds can be added to this same Minecraft-version release later." \
+            > "$notes_file"
 
           if gh release view "$release_tag" >/dev/null 2>&1; then
             gh release edit "$release_tag" --title "$release_title"
