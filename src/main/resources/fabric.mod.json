@@ -11,7 +11,7 @@
     "homepage": "https://github.com/C2C867/shared_inventory1.19.1",
     "sources": "https://github.com/C2C867/shared_inventory1.19.1"
   },
-  "license": "CC-BY-NC-4.0",
+  "license": "GPL-3.0",
   "icon": "assets/shared_inventory_mod/shared_inventory_mod.png",
   "environment": "*",
   "entrypoints": {
