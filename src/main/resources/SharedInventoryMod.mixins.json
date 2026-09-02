@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "package": "com.petrichor.sharedInventory.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "SharedInventoryPlayerEntityMixin",
+    "SharedInventoryServerPlayerEntityMixin",
+    "PlayerScreenHandlerMixin",
+    "ScreenHandlerAccessor"
+  ],
+  "client": [
+    "PlayerEntityRendererMixin",
+    "PlayerEntityRendererInitMixin",
+    "PlayerEntityRenderStateMixin",
+    "LivingEntityRendererAccessor",
+    "InventoryScreenMixin",
+    "HandledScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
