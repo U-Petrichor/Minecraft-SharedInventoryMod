@@ -1,5 +1,6 @@
 package com.petrichor.sharedInventory.client;
 
+import net.minecraft.client.render.item.ItemRenderState;
 import net.minecraft.item.ItemStack;
 
 /**
@@ -12,4 +13,5 @@ import net.minecraft.item.ItemStack;
 public interface BackpackRenderState {
     ItemStack getBackpackStack();
     void setBackpackStack(ItemStack stack);
+    ItemRenderState getBackpackItemRenderState();
 }
