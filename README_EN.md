@@ -43,7 +43,7 @@ The key to opening the integrated interface (Private Backpack + Shared Backpack 
 
 ```
 Leather  Stick  Leather
-Leather Ender Eye Leather
+Stick   Ender Eye  Stick
 Leather Leather Leather
 ```
 
