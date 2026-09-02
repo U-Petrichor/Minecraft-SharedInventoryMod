@@ -175,7 +175,11 @@ public class PrivateInventory implements Inventory {
             NbtCompound itemTag = nbtList.getCompound(i).orElse(new NbtCompound());
             int slot = itemTag.getShort("Slot").orElse((short) 0) & 0xFFFF;
             if (slot >= 0 && slot < STACK_SIZE) {
-                ItemStack.CODEC.parse(registryLookup.getOps(net.minecraft.nbt.NbtOps.INSTANCE), itemTag)
+                // Recover stacks written by affected versions as {Slot, id: {id, count, components}}.
+                NbtCompound stackNbt = itemTag.get("id") instanceof NbtCompound nestedStack
+                        ? nestedStack
+                        : itemTag;
+                ItemStack.CODEC.parse(registryLookup.getOps(net.minecraft.nbt.NbtOps.INSTANCE), stackNbt)
                         .result().ifPresent(stack -> this.privateStack.set(slot, stack));
             }
         }
