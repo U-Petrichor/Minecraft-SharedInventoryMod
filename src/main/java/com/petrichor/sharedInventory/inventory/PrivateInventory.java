@@ -171,12 +171,29 @@ public class PrivateInventory implements Inventory {
     /** 从 NbtList 读取全部物品 (跨页连续存储) */
     public void readNbtList(NbtList nbtList, RegistryWrapper.WrapperLookup registryLookup) {
         privateStack.clear();
-        for (int i = 0; i < STACK_SIZE; i++) { NbtCompound itemTag = nbtList.getCompound(i); int slot = itemTag.getShort("Slot") & 0xFFFF; if (slot >= 0 && slot < STACK_SIZE) { this.privateStack.set(slot, ItemStack.fromNbtOrEmpty(registryLookup, itemTag)); } }
+        for (int i = 0; i < nbtList.size(); i++) {
+            NbtCompound itemTag = nbtList.getCompound(i);
+            int slot = itemTag.getShort("Slot") & 0xFFFF;
+            if (slot >= 0 && slot < STACK_SIZE) {
+                // Recover stacks written by affected versions as {Slot, id: {id, count, components}}.
+                NbtCompound stackNbt = itemTag.get("id") instanceof NbtCompound nestedStack
+                        ? nestedStack
+                        : itemTag;
+                this.privateStack.set(slot, ItemStack.fromNbtOrEmpty(registryLookup, stackNbt));
+            }
+        }
     }
     /** 将全部物品写入 NbtList (非空物品) */
     public NbtList toNbtList(RegistryWrapper.WrapperLookup registryLookup) {
         NbtList nbtList = new NbtList();
-        for (int slot = 0; slot < STACK_SIZE; slot++) { ItemStack stack = this.privateStack.get(slot); if (!stack.isEmpty()) { NbtCompound itemTag = new NbtCompound(); itemTag.putShort("Slot", (short) slot); itemTag.put("id", stack.encode(registryLookup)); nbtList.add(itemTag); } }
+        for (int slot = 0; slot < STACK_SIZE; slot++) {
+            ItemStack stack = this.privateStack.get(slot);
+            if (!stack.isEmpty()) {
+                NbtCompound itemTag = (NbtCompound) stack.encode(registryLookup);
+                itemTag.putShort("Slot", (short) slot);
+                nbtList.add(itemTag);
+            }
+        }
         return nbtList;
     }
     // === NBT 序列化 ===
