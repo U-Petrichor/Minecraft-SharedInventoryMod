@@ -45,7 +45,7 @@ public class BackpackFeatureRenderer extends FeatureRenderer<AbstractClientPlaye
         ModelPart body = this.getContextModel().body;
         body.rotate(matrices);
 
-        matrices.translate(0.0F, 0.20F, 0.35F);
+        matrices.translate(0.0F, 0.45F, 0.30F);
         matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(180));
 
         client.getItemRenderer().renderItem(backpackStack,
