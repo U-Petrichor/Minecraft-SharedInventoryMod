@@ -44,7 +44,7 @@ public class BackpackFeatureRenderer extends FeatureRenderer<AbstractClientPlaye
         ModelPart body = this.getContextModel().body;
         body.rotate(matrices);
 
-        matrices.translate(0.0F, 0.20F, 0.35F);
+        matrices.translate(0.0F, 0.45F, 0.30F);
         matrices.multiply(net.minecraft.util.math.Vec3f.POSITIVE_Z.getDegreesQuaternion(180));
 
         client.getItemRenderer().renderItem(backpackStack,
