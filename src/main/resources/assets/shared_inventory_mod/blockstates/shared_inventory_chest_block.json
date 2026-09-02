@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "shared_inventory_mod:block/shared_inventory_chest_block",
+      "y": 180
+    },
+    "facing=south": {
+      "model": "shared_inventory_mod:block/shared_inventory_chest_block"
+    },
+    "facing=east": {
+      "model": "shared_inventory_mod:block/shared_inventory_chest_block",
+      "y": 270
+    },
+    "facing=west": {
+      "model": "shared_inventory_mod:block/shared_inventory_chest_block",
+      "y": 90
+    }
+  }
+}
