@@ -175,7 +175,11 @@ public class PrivateInventory implements Inventory {
             NbtCompound itemTag = nbtList.getCompound(i).orElse(new NbtCompound());
             int slot = itemTag.getShort("Slot").orElse((short) 0) & 0xFFFF;
             if (slot >= 0 && slot < STACK_SIZE) {
-                ItemStack.fromNbt(registryLookup, itemTag).ifPresent(stack -> this.privateStack.set(slot, stack));
+                // Recover stacks written by affected versions as {Slot, id: {id, count, components}}.
+                NbtCompound stackNbt = itemTag.get("id") instanceof NbtCompound nestedStack
+                        ? nestedStack
+                        : itemTag;
+                ItemStack.fromNbt(registryLookup, stackNbt).ifPresent(stack -> this.privateStack.set(slot, stack));
             }
         }
     }
@@ -185,10 +189,8 @@ public class PrivateInventory implements Inventory {
         for (int slot = 0; slot < STACK_SIZE; slot++) {
             ItemStack stack = this.privateStack.get(slot);
             if (!stack.isEmpty()) {
-                NbtCompound itemTag = new NbtCompound();
+                NbtCompound itemTag = (NbtCompound) stack.toNbt(registryLookup);
                 itemTag.putShort("Slot", (short) slot);
-                // 1.21.2: ItemStack.encode 变为 toNbt
-                itemTag.put("id", stack.toNbt(registryLookup));
                 nbtList.add(itemTag);
             }
         }
