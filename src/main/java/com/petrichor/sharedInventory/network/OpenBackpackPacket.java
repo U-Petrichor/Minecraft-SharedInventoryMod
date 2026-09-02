@@ -1,8 +1,6 @@
 package com.petrichor.sharedInventory.network;
 
 import com.petrichor.sharedInventory.SharedInventoryMod;
-import com.petrichor.sharedInventory.block.SharedInventoryChestBlockEntity;
-import com.petrichor.sharedInventory.inventory.SharedInventoryPlayerEntity;
 import com.petrichor.sharedInventory.item.BackpackInventory;
 import com.petrichor.sharedInventory.item.SharedInventoryBackpack;
 import com.petrichor.sharedInventory.screen.SharedInventoryScreenHandler;
@@ -16,7 +14,7 @@ import net.minecraft.text.Text;
  * 打开背包网络包 — 服务端处理客户端按 B 键打开背包的请求
  *
  * 流程: 客户端按键 → 发送 OPEN_BACKPACK_ID 包 → 服务端查找玩家装备的背包 →
- * 读取背包绑定的 SharedInventoryChestBlockEntity → 打开 SharedInventoryScreenHandler
+ * 读取背包绑定的核心 UUID → 从世界级存储打开 SharedInventoryScreenHandler
  * 若未装备背包或未绑定共享核心，返回提示消息
  */
 public class OpenBackpackPacket {
@@ -37,10 +35,10 @@ public class OpenBackpackPacket {
             return;
         }
 
-        SharedInventoryChestBlockEntity blockEntity = SharedInventoryBackpack.readLinkedBlockEntity(
+        BackpackInventory inventory = SharedInventoryBackpack.createLinkedInventory(
                 backpackStack, player.getServer());
 
-        if (blockEntity == null) {
+        if (inventory == null) {
             player.sendMessage(Text.translatable("message.shared_inventory_mod.shared_inventory_backpack.message1"), true);
             return;
         }
@@ -54,7 +52,7 @@ public class OpenBackpackPacket {
 
                 @Override
                 public net.minecraft.screen.ScreenHandler createMenu(int syncId, net.minecraft.entity.player.PlayerInventory inv, PlayerEntity player) {
-                    return new SharedInventoryScreenHandler(syncId, inv, new BackpackInventory(blockEntity));
+                    return new SharedInventoryScreenHandler(syncId, inv, inventory);
                 }
             });
         }

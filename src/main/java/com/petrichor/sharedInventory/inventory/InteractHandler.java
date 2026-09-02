@@ -13,8 +13,8 @@ import net.minecraft.util.math.BlockPos;
  * 交互事件处理器 — 处理背包与共享核心的绑定
  *
  * 当玩家手持共享背包右键点击共享核心方块时，
- * 将共享核心的坐标写入背包的 NBT，完成绑定。
- * 绑定后背包才能通过 NBT 坐标找到对应的 BlockEntity 来存取公共物品。
+ * 将共享核心的 UUID 写入背包 NBT，完成绑定。
+ * 坐标和维度仍会保留，用于旧存档迁移与诊断，但远程访问不再依赖核心区块加载。
  */
 public class InteractHandler {
 
