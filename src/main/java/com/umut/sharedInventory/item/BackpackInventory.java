@@ -1,11 +1,13 @@
 package com.umut.sharedInventory.item;
 
-import com.umut.sharedInventory.block.SharedInventoryChestBlockEntity;
+import com.umut.sharedInventory.inventory.SharedCoreStorageState;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.collection.DefaultedList;
+
+import java.util.UUID;
 
 /**
  * 每次打开背包时创建的 Inventory 包装器
@@ -18,59 +20,64 @@ import net.minecraft.util.collection.DefaultedList;
  */
 public class BackpackInventory implements Inventory {
     /** 公共背包槽位数 (4×4) */
-    private static final int PUBLIC_STACK_SIZE = 16;
-    /** 关联的共享核心方块实体，所有物品操作委托给它 */
-    private final SharedInventoryChestBlockEntity linkedBlockEntity;
+    private static final int PUBLIC_STACK_SIZE = SharedCoreStorageState.INVENTORY_SIZE;
+    private final SharedCoreStorageState storageState;
+    private final UUID coreId;
 
-    public BackpackInventory(SharedInventoryChestBlockEntity linkedBlockEntity) {
-        this.linkedBlockEntity = linkedBlockEntity;
+    public BackpackInventory(SharedCoreStorageState storageState, UUID coreId) {
+        this.storageState = storageState;
+        this.coreId = coreId;
     }
 
     @Override
     public int size() { return PUBLIC_STACK_SIZE; }
 
     /** 检查关联的 BlockEntity 是否仍然有效 (区块未卸载) */
-    public boolean isLinkedBlockEntityValid() {
-        return this.linkedBlockEntity != null && !this.linkedBlockEntity.isRemoved();
+    private DefaultedList<ItemStack> getItems() {
+        return storageState.getItems(coreId);
     }
 
     @Override
     public ItemStack getStack(int slot) {
-        if (slot >= 0 && slot < PUBLIC_STACK_SIZE)
-            return this.linkedBlockEntity.getPublicStack().get(slot);
+        DefaultedList<ItemStack> items = getItems();
+        if (items != null && slot >= 0 && slot < PUBLIC_STACK_SIZE)
+            return items.get(slot);
         return ItemStack.EMPTY;
     }
 
     @Override
     public void setStack(int slot, ItemStack stack) {
-        if (slot < 0 || slot >= PUBLIC_STACK_SIZE) return;
+        DefaultedList<ItemStack> items = getItems();
+        if (items == null || slot < 0 || slot >= PUBLIC_STACK_SIZE) return;
         if (!stack.isEmpty() && stack.getCount() > this.getMaxCountPerStack()) {
             stack.setCount(this.getMaxCountPerStack());
         }
-        this.linkedBlockEntity.getPublicStack().set(slot, stack);
-        this.linkedBlockEntity.markDirty();
+        items.set(slot, stack);
+        storageState.markDirty();
     }
 
     @Override
     public ItemStack removeStack(int slot, int amount) {
-        if (slot < 0 || slot >= PUBLIC_STACK_SIZE) return ItemStack.EMPTY;
-        ItemStack result = Inventories.splitStack(this.linkedBlockEntity.getPublicStack(), slot, amount);
-        if (!result.isEmpty()) this.linkedBlockEntity.markDirty();
+        DefaultedList<ItemStack> items = getItems();
+        if (items == null || slot < 0 || slot >= PUBLIC_STACK_SIZE) return ItemStack.EMPTY;
+        ItemStack result = Inventories.splitStack(items, slot, amount);
+        if (!result.isEmpty()) storageState.markDirty();
         return result;
     }
 
     @Override
     public ItemStack removeStack(int slot) {
-        if (slot >= 0 && slot < PUBLIC_STACK_SIZE) {
-            ItemStack result = Inventories.removeStack(this.linkedBlockEntity.getPublicStack(), slot);
-            if (!result.isEmpty()) this.linkedBlockEntity.markDirty();
+        DefaultedList<ItemStack> items = getItems();
+        if (items != null && slot >= 0 && slot < PUBLIC_STACK_SIZE) {
+            ItemStack result = Inventories.removeStack(items, slot);
+            if (!result.isEmpty()) storageState.markDirty();
             return result;
         }
         return ItemStack.EMPTY;
     }
 
     @Override
-    public void markDirty() { this.linkedBlockEntity.markDirty(); }
+    public void markDirty() { storageState.markDirty(); }
 
     @Override
     public boolean isEmpty() {
@@ -81,13 +88,13 @@ public class BackpackInventory implements Inventory {
     }
 
     @Override
-    public boolean canPlayerUse(PlayerEntity player) { return isLinkedBlockEntityValid(); }
+    public boolean canPlayerUse(PlayerEntity player) { return storageState.contains(coreId); }
 
     @Override
     public void clear() {
-        for (int i = 0; i < PUBLIC_STACK_SIZE; i++) {
-            this.linkedBlockEntity.getPublicStack().set(i, ItemStack.EMPTY);
-        }
-        this.linkedBlockEntity.markDirty();
+        DefaultedList<ItemStack> items = getItems();
+        if (items == null) return;
+        items.clear();
+        storageState.markDirty();
     }
 }

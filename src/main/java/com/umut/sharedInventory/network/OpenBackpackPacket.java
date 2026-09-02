@@ -30,10 +30,10 @@ public class OpenBackpackPacket {
             return;
         }
 
-        SharedInventoryChestBlockEntity blockEntity = SharedInventoryBackpack.readLinkedBlockEntity(
+        BackpackInventory inventory = SharedInventoryBackpack.createLinkedInventory(
                 backpackStack, player.getServer());
 
-        if (blockEntity == null) {
+        if (inventory == null) {
             player.sendMessage(Text.translatable("message.shared_inventory_mod.shared_inventory_backpack.message1"), true);
             return;
         }
@@ -47,7 +47,7 @@ public class OpenBackpackPacket {
 
                 @Override
                 public net.minecraft.screen.ScreenHandler createMenu(int syncId, net.minecraft.entity.player.PlayerInventory inv, PlayerEntity player) {
-                    return new SharedInventoryScreenHandler(syncId, inv, new BackpackInventory(blockEntity));
+                    return new SharedInventoryScreenHandler(syncId, inv, inventory);
                 }
             });
         }

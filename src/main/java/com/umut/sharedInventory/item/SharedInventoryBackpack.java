@@ -1,6 +1,7 @@
 package com.umut.sharedInventory.item;
 
 import com.umut.sharedInventory.block.SharedInventoryChestBlockEntity;
+import com.umut.sharedInventory.inventory.SharedCoreStorageState;
 import com.umut.sharedInventory.inventory.SharedInventoryPlayerEntity;
 import com.umut.sharedInventory.screen.SharedInventoryScreenHandler;
 import net.minecraft.client.item.TooltipContext;
@@ -24,6 +25,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * 共享背包物品 — 核心交互入口
@@ -64,12 +66,12 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
     public @Nullable ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
         ItemStack backpackStack = findBackpackStack(player);
         if (backpackStack == null) return null;
-        SharedInventoryChestBlockEntity blockEntity = readLinkedBlockEntity(backpackStack, player.getServer());
-        if (blockEntity == null) {
+        BackpackInventory inventory = createLinkedInventory(backpackStack, player.getServer());
+        if (inventory == null) {
             player.sendMessage(Text.translatable("message.shared_inventory_mod.shared_inventory_backpack.message1"), true);
             return null;
         }
-        return new SharedInventoryScreenHandler(syncId, inv, new BackpackInventory(blockEntity));
+        return new SharedInventoryScreenHandler(syncId, inv, inventory);
     }
 
     @Override
@@ -79,10 +81,31 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
 
     public void linkToChest(ItemStack stack, SharedInventoryChestBlockEntity blockEntity) {
         if (blockEntity != null && blockEntity.getWorld() != null) {
+            UUID coreId = blockEntity.getOrCreateCoreId();
+            if (coreId == null) return;
             NbtCompound nbt = stack.getOrCreateNbt();
+            nbt.putUuid("linkedCoreId", coreId);
             nbt.putLong("linkedBlockEntityPos", blockEntity.getPos().asLong());
             nbt.putString("linkedDimension", blockEntity.getWorld().getRegistryKey().getValue().toString());
         }
+    }
+
+    @Nullable
+    public static BackpackInventory createLinkedInventory(ItemStack stack, MinecraftServer server) {
+        if (server == null) return null;
+        NbtCompound nbt = stack.getNbt();
+        if (nbt == null) return null;
+        SharedCoreStorageState storageState = SharedCoreStorageState.get(server);
+        if (nbt.containsUuid("linkedCoreId")) {
+            UUID coreId = nbt.getUuid("linkedCoreId");
+            if (storageState.contains(coreId)) return new BackpackInventory(storageState, coreId);
+        }
+        SharedInventoryChestBlockEntity blockEntity = readLinkedBlockEntity(stack, server);
+        if (blockEntity == null) return null;
+        UUID coreId = blockEntity.getOrCreateCoreId();
+        if (coreId == null) return null;
+        stack.getOrCreateNbt().putUuid("linkedCoreId", coreId);
+        return new BackpackInventory(storageState, coreId);
     }
 
     @Nullable
@@ -97,8 +120,11 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
                 Identifier dimId = new Identifier(nbt.getString("linkedDimension"));
                 RegistryKey<World> dimKey = RegistryKey.of(RegistryKeys.WORLD, dimId);
                 ServerWorld world = server.getWorld(dimKey);
-                if (world != null && world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity be) {
-                    return be;
+                if (world != null) {
+                    world.getChunk(pos);
+                    if (world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity) {
+                        return (SharedInventoryChestBlockEntity) world.getBlockEntity(pos);
+                    }
                 }
             } catch (net.minecraft.util.InvalidIdentifierException ignored) {
                 // 损坏或过时的 NBT 数据，回退到遍历维度
@@ -107,8 +133,9 @@ public class SharedInventoryBackpack extends Item implements NamedScreenHandlerF
 
         // 回退: 遍历所有维度 (兼容无维度信息的旧数据)
         for (ServerWorld world : server.getWorlds()) {
-            if (world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity be) {
-                return be;
+            world.getChunk(pos);
+            if (world.getBlockEntity(pos) instanceof SharedInventoryChestBlockEntity) {
+                return (SharedInventoryChestBlockEntity) world.getBlockEntity(pos);
             }
         }
         return null;

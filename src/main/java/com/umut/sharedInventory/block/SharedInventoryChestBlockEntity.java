@@ -2,6 +2,7 @@ package com.umut.sharedInventory.block;
 
 import com.umut.sharedInventory.inventory.DefaultedListInventory;
 import com.umut.sharedInventory.inventory.ModObjects;
+import com.umut.sharedInventory.inventory.SharedCoreStorageState;
 import com.umut.sharedInventory.item.BackpackInventory;
 import com.umut.sharedInventory.screen.SharedInventoryScreenHandler;
 import net.minecraft.block.BlockState;
@@ -12,9 +13,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.screen.ScreenHandler;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 /**
  * 共享核心方块实体 — 持有公共背包数据 (4×4 = 16 格)
@@ -25,10 +30,9 @@ import net.minecraft.util.math.BlockPos;
  */
 public class SharedInventoryChestBlockEntity extends BlockEntity implements NamedScreenHandlerFactory {
 
-    /** 公共背包槽位数 (4×4) */
-    private static final int PUBLIC_STACK_SIZE = 16;
-    /** 公共物品列表，所有绑定此核心的玩家共享 */
-    private final DefaultedList<ItemStack> publicStack = DefaultedList.ofSize(PUBLIC_STACK_SIZE, ItemStack.EMPTY);
+    private UUID coreId;
+    private final DefaultedList<ItemStack> legacyPublicStack =
+            DefaultedList.ofSize(SharedCoreStorageState.INVENTORY_SIZE, ItemStack.EMPTY);
 
     public SharedInventoryChestBlockEntity(BlockPos pos, BlockState state) {
         super(ModObjects.SHARED_INVENTORY_CHEST_BLOCK_ENTITY, pos, state);
@@ -38,23 +42,60 @@ public class SharedInventoryChestBlockEntity extends BlockEntity implements Name
         return new SharedInventoryChestBlockEntity(pos, state);
     }
 
-    /**
-     * 获取公共物品列表 (供 BackpackInventory 委托使用)
-     * 警告: 返回可变的内部列表，直接修改不会触发 markDirty()。
-     * 应通过 BackpackInventory 操作以确保数据持久化。
-     */
-    public DefaultedList<ItemStack> getPublicStack() { return this.publicStack; }
+    @Nullable
+    public UUID getOrCreateCoreId() {
+        if (!(this.world instanceof ServerWorld)) return coreId;
+        ServerWorld serverWorld = (ServerWorld) this.world;
+        if (coreId == null) {
+            coreId = UUID.randomUUID();
+            markDirty();
+        }
+        SharedCoreStorageState storageState = SharedCoreStorageState.get(serverWorld.getServer());
+        storageState.ensureCore(coreId, serverWorld, pos, legacyPublicStack);
+        if (!legacyPublicStack.isEmpty()) {
+            legacyPublicStack.clear();
+            markDirty();
+        }
+        return coreId;
+    }
+
+    @Nullable
+    public BackpackInventory createInventory() {
+        if (!(this.world instanceof ServerWorld)) return null;
+        ServerWorld serverWorld = (ServerWorld) this.world;
+        UUID id = getOrCreateCoreId();
+        if (id == null) return null;
+        return new BackpackInventory(SharedCoreStorageState.get(serverWorld.getServer()), id);
+    }
+
+    public DefaultedList<ItemStack> removeStorage() {
+        if (this.world instanceof ServerWorld && coreId != null) {
+            ServerWorld serverWorld = (ServerWorld) this.world;
+            DefaultedList<ItemStack> removed =
+                    SharedCoreStorageState.get(serverWorld.getServer()).removeCore(coreId);
+            if (removed != null) return removed;
+        }
+        return legacyPublicStack;
+    }
 
     @Override
     public void readNbt(NbtCompound nbt) {
         super.readNbt(nbt);
-        DefaultedListInventory.readFromNbt(this.publicStack, nbt, "PublicItems");
+        if (nbt.containsUuid("CoreId")) {
+            coreId = nbt.getUuid("CoreId");
+        }
+        DefaultedListInventory.readFromNbt(this.legacyPublicStack, nbt, "PublicItems");
     }
 
     @Override
     public void writeNbt(NbtCompound nbt) {
         super.writeNbt(nbt);
-        DefaultedListInventory.writeToNbt(this.publicStack, nbt, "PublicItems");
+        if (coreId != null) {
+            nbt.putUuid("CoreId", coreId);
+        }
+        if (!legacyPublicStack.isEmpty()) {
+            DefaultedListInventory.writeToNbt(this.legacyPublicStack, nbt, "PublicItems");
+        }
     }
 
     @Override
@@ -63,7 +104,8 @@ public class SharedInventoryChestBlockEntity extends BlockEntity implements Name
     }
 
     @Override
-    public ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
-        return new SharedInventoryScreenHandler(syncId, inv, new BackpackInventory(this));
+    public @Nullable ScreenHandler createMenu(int syncId, PlayerInventory inv, PlayerEntity player) {
+        BackpackInventory inventory = createInventory();
+        return inventory == null ? null : new SharedInventoryScreenHandler(syncId, inv, inventory);
     }
 }
