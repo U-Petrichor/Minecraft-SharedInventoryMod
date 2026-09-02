@@ -1,6 +1,7 @@
 package com.petrichor.sharedInventory.mixin;
 
 import com.petrichor.sharedInventory.client.BackpackRenderState;
+import net.minecraft.client.render.item.ItemRenderState;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,6 +21,9 @@ public class PlayerEntityRenderStateMixin implements BackpackRenderState {
     @Unique
     private ItemStack shared_inventory$backpackStack = ItemStack.EMPTY;
 
+    @Unique
+    private final ItemRenderState shared_inventory$backpackItemRenderState = new ItemRenderState();
+
     @Override
     public ItemStack getBackpackStack() {
         return this.shared_inventory$backpackStack;
@@ -28,5 +32,10 @@ public class PlayerEntityRenderStateMixin implements BackpackRenderState {
     @Override
     public void setBackpackStack(ItemStack stack) {
         this.shared_inventory$backpackStack = stack;
+    }
+
+    @Override
+    public ItemRenderState getBackpackItemRenderState() {
+        return this.shared_inventory$backpackItemRenderState;
     }
 }

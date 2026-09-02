@@ -2,6 +2,9 @@ package com.petrichor.sharedInventory.mixin;
 
 import com.petrichor.sharedInventory.client.BackpackRenderState;
 import com.petrichor.sharedInventory.inventory.SharedInventoryPlayerEntity;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.item.ItemDisplayContext;
+import net.minecraft.item.ItemStack;
 import net.minecraft.entity.PlayerLikeEntity;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
@@ -25,8 +28,17 @@ public abstract class PlayerEntityRendererMixin {
 
     @Inject(method = "updateRenderState", at = @At("RETURN"))
     private void copyBackpackToRenderState(PlayerLikeEntity player, PlayerEntityRenderState state, float tickDelta, CallbackInfo ci) {
-        if (player instanceof SharedInventoryPlayerEntity sharedPlayer && state instanceof BackpackRenderState backpackState) {
-            backpackState.setBackpackStack(sharedPlayer.shared$getBackpackStack());
-        }
+        if (!(state instanceof BackpackRenderState backpackState)) return;
+
+        ItemStack backpackStack = player instanceof SharedInventoryPlayerEntity sharedPlayer
+                ? sharedPlayer.shared$getBackpackStack()
+                : ItemStack.EMPTY;
+        backpackState.setBackpackStack(backpackStack);
+        MinecraftClient.getInstance().getItemModelManager().updateForLivingEntity(
+                backpackState.getBackpackItemRenderState(),
+                backpackStack,
+                ItemDisplayContext.NONE,
+                player
+        );
     }
 }
